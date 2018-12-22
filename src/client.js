@@ -1,4 +1,5 @@
 import WebSocket from 'isomorphic-ws';
+import { applyChange } from 'deep-diff';
 import { serialize, deserialize } from './serialize';
 
 const messageId = (function* messageIdGen() {
@@ -65,16 +66,29 @@ class Client {
     s.addEventListener('message', listener);
 
     return async function* respGen() {
+      let prev = null;
       while (true) {
         // eslint-disable-next-line no-await-in-loop
         const { id, type, data } = await p;
         if (type === 'multi-end') {
           break;
+        } else if (type === 'multi-inc') {
+          if (prev) {
+            const incData = prev;
+            data.forEach(diff => {
+              applyChange(incData, diff);
+            });
+            yield { id, type, data: incData };
+            prev = incData;
+          } else {
+            throw new Error('received response increment without previous state');
+          }
         } else {
           yield { id, type, data };
           if (type === 'response') {
             break;
           }
+          prev = data;
         }
       }
       s.removeEventListener('message', listener);

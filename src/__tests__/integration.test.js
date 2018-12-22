@@ -28,7 +28,7 @@ beforeAll(async () => {
     }
 
     if (type === 'immediate-multi') {
-      return async function* getSimpleMulti() {
+      return async function* getImmediateMulti() {
         yield 'first';
         yield 'second';
         yield 'third';
@@ -37,7 +37,7 @@ beforeAll(async () => {
     }
 
     if (type === 'delayed-multi') {
-      return async function* getSimpleMulti() {
+      return async function* getDelayedMulti() {
         await wait(100);
         yield 'first';
         await wait(200);
@@ -46,6 +46,19 @@ beforeAll(async () => {
         yield 'third';
         await wait(200);
         yield 'fourth';
+      };
+    }
+
+    if (type === 'incremental') {
+      return async function* getIncremental() {
+        let artist = { name: 'Artist Name' };
+        yield artist;
+
+        artist = { ...artist, bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.' };
+        yield artist;
+
+        artist = { ...artist, tags: ['rock', 'indie', 'icelandic', 'female vocalist'] };
+        yield artist;
       };
     }
 
@@ -104,6 +117,27 @@ test('delayed multi-response', async () => {
   }
 
   expect(respDatas).toEqual(['first', 'second', 'third', 'fourth']);
+});
+
+test('incremental', async () => {
+  const result = await messageClient.send('incremental');
+
+  const respDatas = [];
+
+  // eslint-disable-next-line no-restricted-syntax
+  for await (const respData of result()) {
+    respDatas.push(JSON.parse(JSON.stringify(respData)));
+  }
+
+  expect(respDatas).toEqual([
+    { name: 'Artist Name' },
+    { name: 'Artist Name', bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.' },
+    {
+      name: 'Artist Name',
+      bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.',
+      tags: ['rock', 'indie', 'icelandic', 'female vocalist'],
+    },
+  ]);
 });
 
 const wait = millis =>

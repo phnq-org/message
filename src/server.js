@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import diff from 'deep-diff';
 import { serialize, deserialize } from './serialize';
 
 class Server {
@@ -54,9 +55,22 @@ class Server {
 
           await send({ type: 'multi-begin', id, data: {} });
 
+          let prev = null;
+
           // eslint-disable-next-line no-restricted-syntax
           for await (const respData of respDataIterator) {
-            await send({ type: 'multi-response', id, data: respData });
+            if (prev) {
+              const inc = diff(prev, respData);
+              // If increment size is less than raw size then send back the increment
+              if (JSON.stringify(inc) < JSON.stringify(respData)) {
+                await send({ type: 'multi-inc', id, data: inc });
+              } else {
+                await send({ type: 'multi-response', id, data: respData });
+              }
+            } else {
+              await send({ type: 'multi-response', id, data: respData });
+            }
+            prev = respData;
           }
 
           await send({ type: 'multi-end', id, data: {} });

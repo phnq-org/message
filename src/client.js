@@ -1,6 +1,12 @@
 import WebSocket from 'isomorphic-ws';
 import { applyChange } from 'deep-diff';
 import { serialize, deserialize } from './serialize';
+import {
+  MESSAGE_TYPE_MULTI_BEGIN,
+  MESSAGE_TYPE_MULTI_INCREMENT,
+  MESSAGE_TYPE_MULTI_END,
+  MESSAGE_TYPE_RESPONSE,
+} from './constants';
 
 const messageId = (function* messageIdGen() {
   let i = 0;
@@ -29,11 +35,11 @@ class Client {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
-    if (rcvType === 'response') {
+    if (rcvType === MESSAGE_TYPE_RESPONSE) {
       return rcvData;
     }
 
-    if (rcvType === 'multi-begin') {
+    if (rcvType === MESSAGE_TYPE_MULTI_BEGIN) {
       return async function* multi() {
         // eslint-disable-next-line no-restricted-syntax
         for await (const { data: respData } of responseIter) {
@@ -70,9 +76,9 @@ class Client {
       while (true) {
         // eslint-disable-next-line no-await-in-loop
         const { id, type, data } = await p;
-        if (type === 'multi-end') {
+        if (type === MESSAGE_TYPE_MULTI_END) {
           break;
-        } else if (type === 'multi-inc') {
+        } else if (type === MESSAGE_TYPE_MULTI_INCREMENT) {
           if (prev) {
             const incData = prev;
             data.forEach(diff => {
@@ -85,7 +91,7 @@ class Client {
           }
         } else {
           yield { id, type, data };
-          if (type === 'response') {
+          if (type === MESSAGE_TYPE_RESPONSE) {
             break;
           }
           prev = data;

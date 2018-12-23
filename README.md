@@ -15,39 +15,39 @@ Here's a simple example to illustrate some basic communication.
 
 ### Server
 
-```
-  import http from 'http';
-  import { MessageServer } from 'phnq-message';
+<!-- prettier-ignore -->
+```js
+import http from 'http';
+import { MessageServer } from 'phnq-message';
 
-  // Native Node.js HTTP server
-  const httpServer = http.createServer(() => {});
-  httpServer.listen(8080);
+// Native Node.js HTTP server
+const httpServer = http.createServer(() => {});
+httpServer.listen(8080);
 
-  const messageServer = new MessageServer(httpServer);
+const messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async message => {
-    const { type, data } = message;
+messageServer.onMessage = async message => {
+  const { type, data } = message;
 
-    if (type === 'greet-me') {
-      return `Hello ${data.name}`;
-    }
+  if (type === 'greet-me') {
+    return `Hello ${data.name}`;
+  }
 
-    throw new Error(`Unsupported message type: ${type}`);
-  };
-
+  throw new Error(`Unsupported message type: ${type}`);
+};
 ```
 
 ### Client
 
-```
-  import { MessageClient } from 'phnq-message';
+<!-- prettier-ignore -->
+```js
+import { MessageClient } from 'phnq-message';
 
-  const messageClient = new MessageClient('ws://localhost:8080');
+const messageClient = new MessageClient('ws://localhost:8080');
 
-  const greeting = await messageClient.send('greet-me', { name: 'Patrick' });
+const greeting = await messageClient.send('greet-me', { name: 'Patrick' });
 
-  console.log(greeting); // "Hello Patrick"
-
+console.log(greeting); // "Hello Patrick"
 ```
 
 Note: this code won't work as-is because `await` can only be used in an `async` context.

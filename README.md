@@ -6,8 +6,8 @@ in browser/server communication.
 ### Request/Response
 
 Since WebSockets offer full-duplex communication, they're not bound by the limitations of the request/response idiom
-like HTTP-based communication like XMLHttpRequest or fetch. However, request/response is often a convenient way of
-fulfilling typical web client/server communicaton demands, and WebSockets alone don't support this. This module does.
+like HTTP-based communication schemes (i.e. fetch, XMLHttpRequest) are. However, request/response is often a convenient
+way to fulfill typical web client/server communicaton demands, and WebSockets alone don't support this. This module does.
 
 ## Usage
 

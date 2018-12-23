@@ -11,7 +11,7 @@ beforeAll(async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (message, connection, send) => {
+  messageServer.onMessage = async (message, conn) => {
     const { type, data } = message;
 
     if (type === 'immediate-echo') {
@@ -24,7 +24,7 @@ beforeAll(async () => {
     }
 
     if (type === 'echo-response-with-send-function') {
-      send(data);
+      conn.send(data);
     }
 
     if (type === 'immediate-multi') {

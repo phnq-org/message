@@ -53,9 +53,15 @@ class Server {
       ws.on('message', async messageRaw => {
         const { id, type, data } = deserialize(messageRaw);
 
-        const resp = await this.onMessage({ type, data }, connection, async respData => {
-          await send({ type: MESSAGE_TYPE_RESPONSE, id, data: respData });
-        });
+        const resp = await this.onMessage(
+          { type, data },
+          {
+            ...connection,
+            send: async respData => {
+              await send({ type: MESSAGE_TYPE_RESPONSE, id, data: respData });
+            },
+          }
+        );
 
         if (typeof resp === 'function') {
           const respDataIterator = resp();

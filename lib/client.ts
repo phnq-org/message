@@ -17,12 +17,16 @@ const messageId = (function* messageIdGen() {
 })();
 
 class Client {
-  constructor(url) {
+  url: string;
+
+  socket?: WebSocket;
+
+  constructor(url: string) {
     this.url = url;
-    this.socket = null;
+    this.socket = undefined;
   }
 
-  async send(type, data) {
+  async send(type: string, data: any) {
     const s = await this.getSocket();
     const id = messageId.next().value;
 
@@ -51,19 +55,19 @@ class Client {
     throw new Error(`Unknown response message type '${rcvType}'`);
   }
 
-  async getResponseGen(msgId) {
+  async getResponseGen(msgId: number) {
     const s = await this.getSocket();
 
-    let r;
-    let p = new Promise(resolve => {
+    let r: (msg: any) => void;
+    let p = new Promise<any>(resolve => {
       r = resolve;
     });
 
-    const listener = event => {
+    const listener = (event: any) => {
       const { id, type, data } = deserialize(event.data);
       if (id === msgId) {
         r({ id, type, data });
-        p = new Promise(resolve => {
+        p = new Promise<any>(resolve => {
           r = resolve;
         });
       }
@@ -80,9 +84,9 @@ class Client {
           break;
         } else if (type === MESSAGE_TYPE_MULTI_INCREMENT) {
           if (prev) {
-            const incData = prev;
-            data.forEach(diff => {
-              applyChange(incData, diff);
+            const incData: any = prev;
+            data.forEach((diff: any) => {
+              applyChange(incData, diff, diff);
             });
             yield { id, type, data: incData };
             prev = incData;
@@ -105,7 +109,7 @@ class Client {
     (await this.getSocket()).close();
   }
 
-  async getSocket() {
+  async getSocket(): Promise<WebSocket> {
     if (this.socket) {
       return this.socket;
     }
@@ -119,7 +123,7 @@ class Client {
       });
 
       s.addEventListener('close', () => {
-        this.socket = null;
+        this.socket = undefined;
       });
 
       s.addEventListener('error', event => {

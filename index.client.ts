@@ -1,3 +1,3 @@
-import Client from './src/client';
+import Client from './lib/client';
 
 export const MessageClient = Client;

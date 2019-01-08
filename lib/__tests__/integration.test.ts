@@ -1,9 +1,9 @@
 import http from 'http';
 import { MessageClient, MessageServer } from '../..';
 
-let httpServer;
+let httpServer: http.Server;
 let messageServer;
-let messageClient;
+let messageClient: any;
 
 beforeAll(async () => {
   httpServer = http.createServer(() => {});
@@ -51,7 +51,7 @@ beforeAll(async () => {
 
     if (type === 'incremental') {
       return async function* getIncremental() {
-        let artist = { name: 'Artist Name' };
+        let artist: { name: string; bio?: string; tags?: string[] } = { name: 'Artist Name' };
         yield artist;
 
         artist = { ...artist, bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.' };
@@ -140,7 +140,7 @@ test('incremental', async () => {
   ]);
 });
 
-const wait = millis =>
+const wait = (millis: number) =>
   new Promise(resolve => {
     setTimeout(resolve, millis);
   });

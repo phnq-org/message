@@ -1,13 +1,29 @@
 # phnq-message
 
-Fairly simple-to-use WebSocket-based messaging client and server. This module is optimized and intended for use
-in browser/server communication.
+Easy to use WebSocket-based messaging client and server. This module is optimized and intended for use
+in web browser/server communication.
 
-### Request/Response
+### Requests and Responses
 
-Since WebSockets offer full-duplex communication, they're not bound by the limitations of the request/response idiom
-like HTTP-based communication schemes (i.e. fetch, XMLHttpRequest) are. However, request/response is often a convenient
-way to fulfill typical web client/server communicaton demands, and WebSockets alone don't support this. This module does.
+With WebSockets there's no need to stick to the request/response idiom because communication is full-duplex.
+This is what makes WebSockets good at "pushing" from server to client. WebSockets are actually often only
+associated with server-initiated push; two-way client/server communication remains an underappreciated
+ability of WebSockets. This is probably because request/response is a very common (and useful!) way of doing
+client/server communication, but the WebSockets API doesn't explicitly support it. This module provides an
+easy way to do request/response (and more) with WebSockets.
+
+### Full-Duplex Performance Advantage
+
+(http2?)
+
+Fetch and XMLHttpRequest are easy to use but unfortunately they tie up sockets. Web browsers restrict
+the number of connections to unique hosts that can be held open at a time. This
+
+With HTTP (i.e. XMLHttpRequest, fetch)
+
+- request -> response
+- request -> response 1, response 2,...response N
+- request -> response, increment,...increment N
 
 ## Usage
 

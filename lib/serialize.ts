@@ -1,12 +1,8 @@
-import jsonpack from 'jsonpack';
+const { pack, unpack } = require('jsonpack');
 
-// export const serialize = o => JSON.stringify(o);
+export const serialize = (val: any): string => pack(annotate(val));
 
-// export const deserialize = s => JSON.parse(s);
-
-export const serialize = val => jsonpack.pack(annotate(val));
-
-const annotate = val => {
+const annotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(annotate);
@@ -18,8 +14,8 @@ const annotate = val => {
   }
 
   if (val && typeof val === 'object') {
-    const obj = {};
-    Object.keys(val).forEach(k => {
+    const obj: { [index: string]: any } = {};
+    Object.keys(val).forEach((k: string) => {
       obj[k] = annotate(val[k]);
     });
     return obj;
@@ -28,11 +24,11 @@ const annotate = val => {
   return val;
 };
 
-export const deserialize = str => deannotate(jsonpack.unpack(str));
+export const deserialize = (str: string) => deannotate(unpack(str));
 
 const DATE_RE = /^(.+)@@@D$/;
 
-const deannotate = val => {
+const deannotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(deannotate);

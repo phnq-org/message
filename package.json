@@ -18,9 +18,12 @@
   "main": "index.js",
   "browser": "index.client.js",
   "scripts": {
-    "release:patch": "npm version patch; npm publish",
-    "release:minor": "npm version minor; npm publish",
-    "test": "jest"
+    "dist": "tsc",
+    "postdist": "node scripts/postdist",
+    "clean": "rimraf dist",
+    "test": "jest",
+    "release:patch": "npm version patch; npm run dist; cd dist; npm publish",
+    "release:minor": "npm version minor; npm run dist; cd dist; npm publish"
   },
   "engines": {
     "node": ">=10"
@@ -34,6 +37,7 @@
     "@babel/plugin-transform-regenerator": "^7.0.0",
     "@babel/preset-env": "^7.2.0",
     "@babel/preset-react": "^7.0.0",
+    "@types/jest": "^23.3.12",
     "babel-core": "^7.0.0-bridge.0",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^23.6.0",
@@ -45,9 +49,14 @@
     "eslint-plugin-prettier": "^3.0.0",
     "eslint-plugin-react": "^7.11.1",
     "jest": "^23.6.0",
-    "prettier": "^1.15.3"
+    "prettier": "^1.15.3",
+    "rimraf": "^2.6.3",
+    "ts-jest": "^23.10.5",
+    "typescript": "^3.2.2"
   },
   "dependencies": {
+    "@types/deep-diff": "^1.0.0",
+    "@types/ws": "^6.0.1",
     "deep-diff": "^1.0.2",
     "isomorphic-ws": "^4.0.1",
     "jsonpack": "^1.1.5",

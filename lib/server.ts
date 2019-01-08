@@ -2,13 +2,7 @@ import http from 'http';
 import WebSocket from 'ws';
 import { diff } from 'deep-diff';
 import { serialize, deserialize } from './serialize';
-import {
-  MESSAGE_TYPE_MULTI_BEGIN,
-  MESSAGE_TYPE_MULTI_RESPONSE,
-  MESSAGE_TYPE_MULTI_INCREMENT,
-  MESSAGE_TYPE_MULTI_END,
-  MESSAGE_TYPE_RESPONSE,
-} from './constants';
+import { MessageType } from './constants';
 
 class Server {
   wss?: WebSocket.Server;
@@ -65,7 +59,7 @@ class Server {
           {
             ...connection,
             send: async (respData: any) => {
-              await send({ type: MESSAGE_TYPE_RESPONSE, id, data: respData });
+              await send({ type: MessageType.Response, id, data: respData });
             },
           }
         );
@@ -73,7 +67,7 @@ class Server {
         if (typeof resp === 'function') {
           const respDataIterator = resp();
 
-          await send({ type: MESSAGE_TYPE_MULTI_BEGIN, id, data: {} });
+          await send({ type: MessageType.MultiBegin, id, data: {} });
 
           let prev = null;
 
@@ -83,20 +77,20 @@ class Server {
               const inc = diff(prev, respData);
               // If increment size is less than raw size then send back the increment
               if (JSON.stringify(inc) < JSON.stringify(respData)) {
-                await send({ type: MESSAGE_TYPE_MULTI_INCREMENT, id, data: inc });
+                await send({ type: MessageType.MultiIncrement, id, data: inc });
               } else {
-                await send({ type: MESSAGE_TYPE_MULTI_RESPONSE, id, data: respData });
+                await send({ type: MessageType.MultiResponse, id, data: respData });
               }
             } else {
-              await send({ type: MESSAGE_TYPE_MULTI_RESPONSE, id, data: respData });
+              await send({ type: MessageType.MultiResponse, id, data: respData });
             }
             prev = respData;
           }
 
-          await send({ type: MESSAGE_TYPE_MULTI_END, id, data: {} });
+          await send({ type: MessageType.MultiEnd, id, data: {} });
         } else {
           const respData = resp;
-          await send({ type: MESSAGE_TYPE_RESPONSE, id, data: respData });
+          await send({ type: MessageType.Response, id, data: respData });
         }
       });
 

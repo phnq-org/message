@@ -1,12 +1,7 @@
 import WebSocket from 'isomorphic-ws';
 import { applyChange } from 'deep-diff';
 import { serialize, deserialize } from './serialize';
-import {
-  MESSAGE_TYPE_MULTI_BEGIN,
-  MESSAGE_TYPE_MULTI_INCREMENT,
-  MESSAGE_TYPE_MULTI_END,
-  MESSAGE_TYPE_RESPONSE,
-} from './constants';
+import { MessageType } from './constants';
 
 const messageId = (function* messageIdGen() {
   let i = 0;
@@ -39,11 +34,11 @@ class Client {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
-    if (rcvType === MESSAGE_TYPE_RESPONSE) {
+    if (rcvType === MessageType.Response) {
       return rcvData;
     }
 
-    if (rcvType === MESSAGE_TYPE_MULTI_BEGIN) {
+    if (rcvType === MessageType.MultiBegin) {
       return async function* multi() {
         // eslint-disable-next-line no-restricted-syntax
         for await (const { data: respData } of responseIter) {
@@ -65,6 +60,7 @@ class Client {
 
     const listener = (event: any) => {
       const { id, type, data } = deserialize(event.data);
+
       if (id === msgId) {
         r({ id, type, data });
         p = new Promise<any>(resolve => {
@@ -80,9 +76,9 @@ class Client {
       while (true) {
         // eslint-disable-next-line no-await-in-loop
         const { id, type, data } = await p;
-        if (type === MESSAGE_TYPE_MULTI_END) {
+        if (type === MessageType.MultiEnd) {
           break;
-        } else if (type === MESSAGE_TYPE_MULTI_INCREMENT) {
+        } else if (type === MessageType.MultiIncrement) {
           if (prev) {
             const incData: any = prev;
             data.forEach((diff: any) => {
@@ -95,7 +91,7 @@ class Client {
           }
         } else {
           yield { id, type, data };
-          if (type === MESSAGE_TYPE_RESPONSE) {
+          if (type === MessageType.Response) {
             break;
           }
           prev = data;

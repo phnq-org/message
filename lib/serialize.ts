@@ -1,4 +1,4 @@
-const { pack, unpack } = require("jsonpack");
+const { pack, unpack } = require('jsonpack');
 
 export const serialize = (val: any): string => pack(annotate(val));
 
@@ -13,7 +13,7 @@ const annotate = (val: any): any => {
     return `${date.toISOString()}@@@D`;
   }
 
-  if (val && typeof val === "object") {
+  if (val && typeof val === 'object') {
     const obj: { [index: string]: any } = {};
     Object.keys(val).forEach((k: string) => {
       obj[k] = annotate(val[k]);
@@ -39,7 +39,7 @@ const deannotate = (val: any): any => {
     return new Date(dateM[1]);
   }
 
-  if (val && typeof val === "object") {
+  if (val && typeof val === 'object') {
     const obj = val;
     Object.keys(obj).forEach(k => {
       obj[k] = deannotate(obj[k]);

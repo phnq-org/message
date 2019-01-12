@@ -1,15 +1,13 @@
-import http from "http";
-import WebSocket from "ws";
-import { diff } from "deep-diff";
-import { serialize, deserialize } from "./serialize";
-import { MessageType } from "./constants";
+import { diff } from 'deep-diff';
+import http from 'http';
+import WebSocket from 'ws';
+import { MessageType } from './constants';
+import { deserialize, serialize } from './serialize';
 
 class Server {
-  wss?: WebSocket.Server;
-
-  onConnect: (conn: Connection) => void;
-
-  onMessage: (message: any, options: any) => any;
+  public onConnect: (conn: Connection) => void;
+  public onMessage: (message: any, options: any) => any;
+  private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
     this.wss = undefined;
@@ -21,8 +19,8 @@ class Server {
     }
   }
 
-  setHttpServer(httpServer: http.Server, path: string = "/") {
-    httpServer.on("upgrade", (request, socket) => {
+  public setHttpServer(httpServer: http.Server, path: string = '/') {
+    httpServer.on('upgrade', (request, socket) => {
       if (request.url !== path) {
         socket.destroy();
       }
@@ -32,13 +30,13 @@ class Server {
     this.wss = new WebSocket.Server({ server: httpServer });
 
     // When a connection is made...
-    this.wss.on("connection", ws => {
+    this.wss.on('connection', ws => {
       // Instantiate a Connection object to hold state
       let connection: Connection | undefined = new Connection();
 
       // Close socket from within the connection
       connection.onClose(() => {
-        ws.close(1000, "Closed by server");
+        ws.close(1000, 'Closed by server');
       });
 
       // Notify of new connections
@@ -51,7 +49,7 @@ class Server {
       };
 
       // Handle incoming messages from client to connection
-      ws.on("message", async (messageRaw: string) => {
+      ws.on('message', async (messageRaw: string) => {
         const { id, type, data } = deserialize(messageRaw);
 
         const resp = await this.onMessage(
@@ -60,18 +58,17 @@ class Server {
             ...connection,
             send: async (respData: any) => {
               await send({ type: MessageType.Response, id, data: respData });
-            }
-          }
+            },
+          },
         );
 
-        if (typeof resp === "function") {
+        if (typeof resp === 'function') {
           const respDataIterator = resp();
 
           await send({ type: MessageType.MultiBegin, id, data: {} });
 
           let prev = null;
 
-          // eslint-disable-next-line no-restricted-syntax
           for await (const respData of respDataIterator) {
             if (prev) {
               const inc = diff(prev, respData);
@@ -82,14 +79,14 @@ class Server {
                 await send({
                   type: MessageType.MultiResponse,
                   id,
-                  data: respData
+                  data: respData,
                 });
               }
             } else {
               await send({
                 type: MessageType.MultiResponse,
                 id,
-                data: respData
+                data: respData,
               });
             }
             prev = respData;
@@ -102,7 +99,7 @@ class Server {
         }
       });
 
-      ws.on("close", () => {
+      ws.on('close', () => {
         if (connection) {
           connection.onCloses.forEach(onClose => onClose());
           connection.destroy();
@@ -114,17 +111,17 @@ class Server {
 }
 
 class Connection {
-  onCloses: Set<() => void>;
+  public onCloses: Set<() => void>;
 
   constructor() {
     this.onCloses = new Set();
   }
 
-  onClose(fn: () => void) {
+  public onClose(fn: () => void) {
     this.onCloses.add(fn);
   }
 
-  destroy() {
+  public destroy() {
     this.onCloses.clear();
   }
 }

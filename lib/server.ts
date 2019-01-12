@@ -1,8 +1,8 @@
-import http from 'http';
-import WebSocket from 'ws';
-import { diff } from 'deep-diff';
-import { serialize, deserialize } from './serialize';
-import { MessageType } from './constants';
+import http from "http";
+import WebSocket from "ws";
+import { diff } from "deep-diff";
+import { serialize, deserialize } from "./serialize";
+import { MessageType } from "./constants";
 
 class Server {
   wss?: WebSocket.Server;
@@ -21,8 +21,8 @@ class Server {
     }
   }
 
-  setHttpServer(httpServer: http.Server, path: string = '/') {
-    httpServer.on('upgrade', (request, socket) => {
+  setHttpServer(httpServer: http.Server, path: string = "/") {
+    httpServer.on("upgrade", (request, socket) => {
       if (request.url !== path) {
         socket.destroy();
       }
@@ -32,13 +32,13 @@ class Server {
     this.wss = new WebSocket.Server({ server: httpServer });
 
     // When a connection is made...
-    this.wss.on('connection', ws => {
+    this.wss.on("connection", ws => {
       // Instantiate a Connection object to hold state
       let connection: Connection | undefined = new Connection();
 
       // Close socket from within the connection
       connection.onClose(() => {
-        ws.close(1000, 'Closed by server');
+        ws.close(1000, "Closed by server");
       });
 
       // Notify of new connections
@@ -51,7 +51,7 @@ class Server {
       };
 
       // Handle incoming messages from client to connection
-      ws.on('message', async (messageRaw: string) => {
+      ws.on("message", async (messageRaw: string) => {
         const { id, type, data } = deserialize(messageRaw);
 
         const resp = await this.onMessage(
@@ -60,11 +60,11 @@ class Server {
             ...connection,
             send: async (respData: any) => {
               await send({ type: MessageType.Response, id, data: respData });
-            },
+            }
           }
         );
 
-        if (typeof resp === 'function') {
+        if (typeof resp === "function") {
           const respDataIterator = resp();
 
           await send({ type: MessageType.MultiBegin, id, data: {} });
@@ -79,10 +79,18 @@ class Server {
               if (JSON.stringify(inc) < JSON.stringify(respData)) {
                 await send({ type: MessageType.MultiIncrement, id, data: inc });
               } else {
-                await send({ type: MessageType.MultiResponse, id, data: respData });
+                await send({
+                  type: MessageType.MultiResponse,
+                  id,
+                  data: respData
+                });
               }
             } else {
-              await send({ type: MessageType.MultiResponse, id, data: respData });
+              await send({
+                type: MessageType.MultiResponse,
+                id,
+                data: respData
+              });
             }
             prev = respData;
           }
@@ -94,7 +102,7 @@ class Server {
         }
       });
 
-      ws.on('close', () => {
+      ws.on("close", () => {
         if (connection) {
           connection.onCloses.forEach(onClose => onClose());
           connection.destroy();

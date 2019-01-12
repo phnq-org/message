@@ -1,7 +1,7 @@
-import WebSocket from 'isomorphic-ws';
-import { applyChange } from 'deep-diff';
-import { serialize, deserialize } from './serialize';
-import { MessageType } from './constants';
+import WebSocket from "isomorphic-ws";
+import { applyChange } from "deep-diff";
+import { serialize, deserialize } from "./serialize";
+import { MessageType } from "./constants";
 
 const messageId = (function* messageIdGen() {
   let i = 0;
@@ -69,7 +69,7 @@ class Client {
       }
     };
 
-    s.addEventListener('message', listener);
+    s.addEventListener("message", listener);
 
     return async function* respGen() {
       let prev = null;
@@ -87,7 +87,9 @@ class Client {
             yield { id, type, data: incData };
             prev = incData;
           } else {
-            throw new Error('received response increment without previous state');
+            throw new Error(
+              "received response increment without previous state"
+            );
           }
         } else {
           yield { id, type, data };
@@ -97,7 +99,7 @@ class Client {
           prev = data;
         }
       }
-      s.removeEventListener('message', listener);
+      s.removeEventListener("message", listener);
     };
   }
 
@@ -113,17 +115,17 @@ class Client {
     return new Promise((resolve, reject) => {
       const s = new WebSocket(this.url);
 
-      s.addEventListener('open', () => {
+      s.addEventListener("open", () => {
         this.socket = s;
         resolve(this.socket);
       });
 
-      s.addEventListener('close', () => {
+      s.addEventListener("close", () => {
         this.socket = undefined;
       });
 
-      s.addEventListener('error', event => {
-        console.log('Socket error: %s', event.message);
+      s.addEventListener("error", event => {
+        console.log("Socket error: %s", event.message);
         reject(new Error(event.message));
       });
     });

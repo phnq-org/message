@@ -1,4 +1,4 @@
-const { pack, unpack } = require('jsonpack');
+import { pack, unpack } from 'jsonpack';
 
 export const serialize = (val: any): string => pack(annotate(val));
 

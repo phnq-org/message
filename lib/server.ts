@@ -11,8 +11,12 @@ class Server {
 
   constructor(httpServer: http.Server, path?: string) {
     this.wss = undefined;
-    this.onConnect = () => {};
-    this.onMessage = () => {};
+    this.onConnect = () => {
+      return;
+    };
+    this.onMessage = () => {
+      return;
+    };
 
     if (httpServer) {
       this.setHttpServer(httpServer, path);
@@ -77,16 +81,16 @@ class Server {
                 await send({ type: MessageType.MultiIncrement, id, data: inc });
               } else {
                 await send({
-                  type: MessageType.MultiResponse,
-                  id,
                   data: respData,
+                  id,
+                  type: MessageType.MultiResponse,
                 });
               }
             } else {
               await send({
-                type: MessageType.MultiResponse,
-                id,
                 data: respData,
+                id,
+                type: MessageType.MultiResponse,
               });
             }
             prev = respData;
@@ -110,6 +114,7 @@ class Server {
   }
 }
 
+/* tslint:disable max-classes-per-file */
 class Connection {
   public onCloses: Set<() => void>;
 

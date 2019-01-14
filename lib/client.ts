@@ -69,7 +69,6 @@ class Client {
       });
 
       s.addEventListener('error', event => {
-        console.log('Socket error: %s', event.message);
         reject(new Error(event.message));
       });
     });

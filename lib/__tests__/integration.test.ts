@@ -6,7 +6,9 @@ let messageServer;
 let messageClient: any;
 
 beforeAll(async () => {
-  httpServer = http.createServer(() => {});
+  httpServer = http.createServer(() => {
+    return;
+  });
   httpServer.listen(55555);
 
   messageServer = new MessageServer(httpServer);
@@ -88,8 +90,8 @@ afterEach(async () => {
 
 test('immediate echo', async () => {
   const result = await messageClient.send('immediate-echo', {
-    foo: 42,
     date: new Date(2018, 0, 1),
+    foo: 42,
   });
   expect(result).toEqual({ foo: 42, date: new Date(2018, 0, 1) });
 });
@@ -142,12 +144,12 @@ test('incremental', async () => {
   expect(respDatas).toEqual([
     { name: 'Artist Name' },
     {
-      name: 'Artist Name',
       bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.',
+      name: 'Artist Name',
     },
     {
-      name: 'Artist Name',
       bio: 'Aliquam tristique nisi ut felis scelerisque porttitor.',
+      name: 'Artist Name',
       tags: ['rock', 'indie', 'icelandic', 'female vocalist'],
     },
   ]);

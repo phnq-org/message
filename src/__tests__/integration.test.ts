@@ -1,19 +1,18 @@
 import http from 'http';
-import { MessageClient, MessageServer } from '../..';
+import MessageClient from '../client';
+import MessageServer, { Connection } from '../server';
 
 let httpServer: http.Server;
-let messageServer;
-let messageClient: any;
+let messageServer: MessageServer;
+let messageClient: MessageClient;
 
 beforeAll(async () => {
-  httpServer = http.createServer(() => {
-    return;
-  });
+  httpServer = http.createServer();
   httpServer.listen(55555);
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (message, conn) => {
+  messageServer.onMessage = async (message, conn: Connection) => {
     const { type, data } = message;
 
     if (type === 'immediate-echo') {

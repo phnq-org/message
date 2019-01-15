@@ -11,7 +11,7 @@ const messageId = (function* messageIdGen() {
   }
 })();
 
-class Client {
+class MessageClient {
   private url: string;
   private socket?: WebSocket;
 
@@ -20,7 +20,7 @@ class Client {
     this.socket = undefined;
   }
 
-  public async send(type: string, data: any) {
+  public async send(type: string, data?: any) {
     const s = await this.getSocket();
     const id = messageId.next().value;
 
@@ -75,7 +75,7 @@ class Client {
   }
 }
 
-export default Client;
+export default MessageClient;
 
 const getResponseGen = async (msgId: number, s: WebSocket) => {
   let r: (msg: any) => void;

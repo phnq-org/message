@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
-class Server {
+class MessageServer {
   public onConnect: (conn: Connection) => void;
   public onMessage: (message: any, options: any) => any;
   private wss?: WebSocket.Server;
@@ -115,7 +115,7 @@ class Server {
 }
 
 /* tslint:disable max-classes-per-file */
-class Connection {
+export class Connection {
   public onCloses: Set<() => void>;
 
   constructor() {
@@ -129,6 +129,10 @@ class Connection {
   public destroy() {
     this.onCloses.clear();
   }
+
+  public send(respData: any) {
+    console.log('send', respData);
+  }
 }
 
 const wait = (millis: number) =>
@@ -136,4 +140,4 @@ const wait = (millis: number) =>
     setTimeout(resolve, millis);
   });
 
-export default Server;
+export default MessageServer;

@@ -16,7 +16,6 @@
     "url": "git+https://github.com/pgostovic/phnq-message.git"
   },
   "main": "index.js",
-  "browser": "index.client.js",
   "scripts": {
     "dist": "tsc",
     "postdist": "ts-node scripts/postdist",

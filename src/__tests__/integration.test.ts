@@ -1,6 +1,6 @@
 import http from 'http';
 import MessageClient from '../client';
-import MessageServer, { Connection } from '../server';
+import MessageServer from '../server';
 
 let httpServer: http.Server;
 let messageServer: MessageServer;
@@ -12,9 +12,7 @@ beforeAll(async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (message, conn: Connection) => {
-    const { type, data } = message;
-
+  messageServer.onMessage = async (type: string, data: any) => {
     if (type === 'immediate-echo') {
       return data;
     }
@@ -22,10 +20,6 @@ beforeAll(async () => {
     if (type === 'delayed-echo') {
       await wait(200);
       return data;
-    }
-
-    if (type === 'echo-response-with-send-function') {
-      conn.send(data);
     }
 
     if (type === 'immediate-multi') {
@@ -98,13 +92,6 @@ test('immediate echo', async () => {
 test('delayed echo', async () => {
   const result = await messageClient.send('delayed-echo', { bar: 43 });
   expect(result).toEqual({ bar: 43 });
-});
-
-test('echo with send function', async () => {
-  const result = await messageClient.send('echo-response-with-send-function', {
-    bobo: 44,
-  });
-  expect(result).toEqual({ bobo: 44 });
 });
 
 test('immediate multi-response', async () => {

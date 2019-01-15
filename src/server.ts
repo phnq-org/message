@@ -6,7 +6,7 @@ import { deserialize, serialize } from './serialize';
 
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage: (message: any, options: any) => any;
+  public onMessage: (type: string, data: any, conn?: Connection) => any;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -56,15 +56,7 @@ export class MessageServer {
       ws.on('message', async (messageRaw: string) => {
         const { id, type, data } = deserialize(messageRaw);
 
-        const resp = await this.onMessage(
-          { type, data },
-          {
-            ...connection,
-            send: async (respData: any) => {
-              await send({ type: MessageType.Response, id, data: respData });
-            },
-          },
-        );
+        const resp = await this.onMessage(type, data, connection);
 
         if (typeof resp === 'function') {
           const respDataIterator = resp();
@@ -128,10 +120,6 @@ export class Connection {
 
   public destroy() {
     this.onCloses.clear();
-  }
-
-  public send(respData: any) {
-    console.log('send', respData);
   }
 }
 

@@ -11,7 +11,7 @@ const messageId = (function* messageIdGen() {
   }
 })();
 
-class MessageClient {
+export class MessageClient {
   private url: string;
   private socket?: WebSocket;
 

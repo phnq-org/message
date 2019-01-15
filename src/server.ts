@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
-class MessageServer {
+export class MessageServer {
   public onConnect: (conn: Connection) => void;
   public onMessage: (message: any, options: any) => any;
   private wss?: WebSocket.Server;

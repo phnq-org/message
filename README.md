@@ -1,4 +1,4 @@
-# phnq-message
+# @pgostovic/message
 
 Easy to use WebSocket-based messaging client and server. This module is optimized and intended for use
 in web browser/server communication.
@@ -34,7 +34,7 @@ Here's a simple example to illustrate some basic communication.
 <!-- prettier-ignore -->
 ```js
 import http from 'http';
-import { MessageServer } from 'phnq-message';
+import { MessageServer } from '@pgostovic/message';
 
 // Native Node.js HTTP server
 const httpServer = http.createServer(() => {});
@@ -57,7 +57,7 @@ messageServer.onMessage = async message => {
 
 <!-- prettier-ignore -->
 ```js
-import { MessageClient } from 'phnq-message';
+import { MessageClient } from '@pgostovic/message';
 
 const messageClient = new MessageClient('ws://localhost:8080');
 

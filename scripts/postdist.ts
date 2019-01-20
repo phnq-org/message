@@ -1,31 +1,34 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+
 const {
-  name: packageName,
-  version,
-  description,
-  keywords,
-  repository,
-  main,
-  browser,
-  engines,
   author,
-  license,
+  browser,
   dependencies,
-} = require('../package.json');
+  description,
+  engines,
+  keywords,
+  license,
+  main,
+  name: packageName,
+  repository,
+  version,
+} = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../package.json')).toString(),
+);
 
 const distPkgJSON = {
-  name: packageName,
-  version,
-  description,
-  keywords,
-  repository,
-  main,
-  browser,
-  engines,
   author,
-  license,
+  browser,
   dependencies,
+  description,
+  engines,
+  keywords,
+  license,
+  main,
+  name: packageName,
+  repository,
+  version,
 };
 
 fs.writeFileSync(

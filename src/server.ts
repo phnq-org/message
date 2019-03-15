@@ -6,7 +6,7 @@ import { deserialize, serialize } from './serialize';
 
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage: (type: string, data: any, conn?: Connection) => any;
+  public onMessage: (type: string, data: any, conn: Connection) => any;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -56,21 +56,33 @@ export class MessageServer {
       ws.on('message', async (messageRaw: string) => {
         const { id, type, data } = deserialize(messageRaw);
 
-        const resp = await this.onMessage(type, data, connection);
+        if (connection) {
+          const resp = await this.onMessage(type, data, connection);
 
-        if (typeof resp === 'function') {
-          const respDataIterator = resp();
+          if (typeof resp === 'function') {
+            const respDataIterator = resp();
 
-          await send({ type: MessageType.MultiBegin, id, data: {} });
+            await send({ type: MessageType.MultiBegin, id, data: {} });
 
-          let prev = null;
+            let prev = null;
 
-          for await (const respData of respDataIterator) {
-            if (prev) {
-              const inc = diff(prev, respData);
-              // If increment size is less than raw size then send back the increment
-              if (JSON.stringify(inc) < JSON.stringify(respData)) {
-                await send({ type: MessageType.MultiIncrement, id, data: inc });
+            for await (const respData of respDataIterator) {
+              if (prev) {
+                const inc = diff(prev, respData);
+                // If increment size is less than raw size then send back the increment
+                if (JSON.stringify(inc) < JSON.stringify(respData)) {
+                  await send({
+                    type: MessageType.MultiIncrement,
+                    id,
+                    data: inc,
+                  });
+                } else {
+                  await send({
+                    data: respData,
+                    id,
+                    type: MessageType.MultiResponse,
+                  });
+                }
               } else {
                 await send({
                   data: respData,
@@ -78,20 +90,14 @@ export class MessageServer {
                   type: MessageType.MultiResponse,
                 });
               }
-            } else {
-              await send({
-                data: respData,
-                id,
-                type: MessageType.MultiResponse,
-              });
+              prev = respData;
             }
-            prev = respData;
-          }
 
-          await send({ type: MessageType.MultiEnd, id, data: {} });
-        } else {
-          const respData = resp;
-          await send({ type: MessageType.Response, id, data: respData });
+            await send({ type: MessageType.MultiEnd, id, data: {} });
+          } else {
+            const respData = resp;
+            await send({ type: MessageType.Response, id, data: respData });
+          }
         }
       });
 

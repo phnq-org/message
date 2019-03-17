@@ -101,7 +101,7 @@ export class MessageServer {
             }
           } catch (err) {
             await send({
-              data: err.toString(),
+              data: err.message,
               id,
               type: MessageType.InternalError,
             });

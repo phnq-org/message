@@ -151,6 +151,7 @@ test('internal error', async () => {
     fail('Should have thrown');
   } catch (err) {
     expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('triggered');
   }
 });
 

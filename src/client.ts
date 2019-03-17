@@ -32,7 +32,10 @@ export class MessageClient {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
-    if (rcvType === MessageType.Response) {
+    if (
+      rcvType === MessageType.Response ||
+      rcvType === MessageType.InternalError
+    ) {
       return rcvData;
     }
 
@@ -115,7 +118,10 @@ const getResponseGen = async (msgId: number, s: WebSocket) => {
         }
       } else {
         yield { id, type, data };
-        if (type === MessageType.Response) {
+        if (
+          type === MessageType.Response ||
+          type === MessageType.InternalError
+        ) {
           break;
         }
         prev = data;

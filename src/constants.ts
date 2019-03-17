@@ -4,4 +4,5 @@ export enum MessageType {
   MultiResponse,
   MultiIncrement,
   MultiEnd,
+  InternalError,
 }

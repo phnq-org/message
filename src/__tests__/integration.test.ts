@@ -65,6 +65,10 @@ beforeAll(async () => {
       };
     }
 
+    if (type === 'trigger-error') {
+      throw new Error('triggered');
+    }
+
     return null;
   };
 });
@@ -139,6 +143,11 @@ test('incremental', async () => {
       tags: ['rock', 'indie', 'icelandic', 'female vocalist'],
     },
   ]);
+});
+
+test('internal error', async () => {
+  const result = await messageClient.send('trigger-error');
+  expect(result).toBe('Error: triggered');
 });
 
 const wait = (millis: number) =>

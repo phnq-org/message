@@ -146,8 +146,12 @@ test('incremental', async () => {
 });
 
 test('internal error', async () => {
-  const result = await messageClient.send('trigger-error');
-  expect(result).toBe('Error: triggered');
+  try {
+    await messageClient.send('trigger-error');
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Error);
+  }
 });
 
 const wait = (millis: number) =>

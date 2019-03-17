@@ -32,10 +32,11 @@ export class MessageClient {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
-    if (
-      rcvType === MessageType.Response ||
-      rcvType === MessageType.InternalError
-    ) {
+    if (rcvType === MessageType.InternalError) {
+      throw new Error(rcvData);
+    }
+
+    if (rcvType === MessageType.Response) {
       return rcvData;
     }
 

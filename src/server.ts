@@ -123,9 +123,11 @@ export class MessageServer {
 /* tslint:disable max-classes-per-file */
 export class Connection {
   public onCloses: Set<() => void>;
+  private state: Map<string, any>;
 
   constructor() {
     this.onCloses = new Set();
+    this.state = new Map<string, any>();
   }
 
   public onClose(fn: () => void) {
@@ -134,6 +136,14 @@ export class Connection {
 
   public destroy() {
     this.onCloses.clear();
+  }
+
+  public get(key: string): any {
+    return this.state.get(key);
+  }
+
+  public set(key: string, value: any): void {
+    this.state.set(key, value);
   }
 }
 

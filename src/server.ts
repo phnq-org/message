@@ -1,6 +1,7 @@
 import { diff } from 'deep-diff';
 import http from 'http';
 import WebSocket from 'ws';
+import { Anomaly } from './anomaly';
 import { MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
@@ -100,11 +101,24 @@ export class MessageServer {
               await send({ type: MessageType.Response, id, data: respData });
             }
           } catch (err) {
-            await send({
-              data: err.message,
-              id,
-              type: MessageType.InternalError,
-            });
+            if (err instanceof Anomaly) {
+              await send({
+                data: {
+                  data: err.data,
+                  message: err.message,
+                },
+                id,
+                type: MessageType.Anomaly,
+              });
+            } else {
+              await send({
+                data: {
+                  message: err.message,
+                },
+                id,
+                type: MessageType.InternalError,
+              });
+            }
           }
         }
       });

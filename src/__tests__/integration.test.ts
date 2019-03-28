@@ -1,4 +1,5 @@
 import http from 'http';
+import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
 import MessageServer from '../server';
 
@@ -67,6 +68,10 @@ beforeAll(async () => {
 
     if (type === 'trigger-error') {
       throw new Error('triggered');
+    }
+
+    if (type === 'trigger-anomaly') {
+      throw new Anomaly('anomaly', { foo: 42 });
     }
 
     return null;
@@ -152,6 +157,17 @@ test('internal error', async () => {
   } catch (err) {
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe('triggered');
+  }
+});
+
+test('anomaly', async () => {
+  try {
+    await messageClient.send('trigger-anomaly');
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Anomaly);
+    expect(err.message).toBe('anomaly');
+    expect(err.data).toEqual({ foo: 42 });
   }
 });
 

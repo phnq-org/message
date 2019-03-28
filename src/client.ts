@@ -1,5 +1,6 @@
 import { applyChange } from 'deep-diff';
 import WebSocket from 'isomorphic-ws';
+import { Anomaly } from './anomaly';
 import { MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
@@ -32,23 +33,26 @@ export class MessageClient {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
-    if (rcvType === MessageType.InternalError) {
-      throw new Error(rcvData);
-    }
+    switch (rcvType) {
+      case MessageType.Anomaly:
+        throw new Anomaly(rcvData.message, rcvData.data);
 
-    if (rcvType === MessageType.Response) {
-      return rcvData;
-    }
+      case MessageType.InternalError:
+        throw new Error(rcvData.message);
 
-    if (rcvType === MessageType.MultiBegin) {
-      return async function* multi() {
-        for await (const { data: respData } of responseIter) {
-          yield respData;
-        }
-      };
-    }
+      case MessageType.Response:
+        return rcvData;
 
-    throw new Error(`Unknown response message type '${rcvType}'`);
+      case MessageType.MultiBegin:
+        return async function* multi() {
+          for await (const { data: respData } of responseIter) {
+            yield respData;
+          }
+        };
+
+      default:
+        throw new Error(`Unknown response message type '${rcvType}'`);
+    }
   }
 
   public async close() {

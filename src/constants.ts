@@ -5,4 +5,5 @@ export enum MessageType {
   MultiIncrement,
   MultiEnd,
   InternalError,
+  Anomaly,
 }

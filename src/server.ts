@@ -7,7 +7,7 @@ import { deserialize, serialize } from './serialize';
 
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage: (type: string, data: IData, conn: Connection) => any;
+  public onMessage: (type: string, data: IData, conn: Connection) => Promise<any>;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -15,16 +15,14 @@ export class MessageServer {
     this.onConnect = () => {
       return;
     };
-    this.onMessage = () => {
+    this.onMessage = async () => {
       return;
     };
 
-    if (httpServer) {
-      this.setHttpServer(httpServer, path);
-    }
+    this.setHttpServer(httpServer, path);
   }
 
-  public setHttpServer(httpServer: http.Server, path: string = '/') {
+  private setHttpServer(httpServer: http.Server, path: string = '/') {
     httpServer.on('upgrade', (request, socket) => {
       if (request.url !== path) {
         socket.destroy();
@@ -47,11 +45,7 @@ export class MessageServer {
       // Notify of new connections
       this.onConnect(connection);
 
-      const send = async (message: {
-        type: MessageType;
-        id: string;
-        data: IData | Array<Diff<any, any>>;
-      }) => {
+      const send = async (message: { type: MessageType; id: string; data: IData | Array<Diff<any, any>> }) => {
         // Need this for multi responses
         await wait(0);
         ws.send(serialize(message));

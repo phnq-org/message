@@ -123,10 +123,7 @@ const getResponseGen = async (msgId: number, s: WebSocket) => {
         }
       } else {
         yield { id, type, data };
-        if (
-          type === MessageType.Response ||
-          type === MessageType.InternalError
-        ) {
+        if (type === MessageType.Response || type === MessageType.InternalError) {
           break;
         }
         prev = data;

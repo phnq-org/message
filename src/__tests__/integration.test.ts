@@ -1,6 +1,7 @@
 import http from 'http';
 import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
+import { IData } from '../constants';
 import MessageServer from '../server';
 
 let httpServer: http.Server;
@@ -13,7 +14,7 @@ beforeAll(async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (type: string, data: any) => {
+  messageServer.onMessage = async (type: string, data: IData): Promise<any> => {
     if (type === 'immediate-echo') {
       return data;
     }

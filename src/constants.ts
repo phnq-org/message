@@ -7,3 +7,9 @@ export enum MessageType {
   InternalError,
   Anomaly,
 }
+
+export type IValue = string | number | boolean | Date | IData | undefined;
+
+export interface IData {
+  [key: string]: IValue | IValue[];
+}

@@ -1,7 +1,7 @@
 import { applyChange } from 'deep-diff';
 import WebSocket from 'isomorphic-ws';
 import { Anomaly } from './anomaly';
-import { MessageType } from './constants';
+import { IData, MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
 const messageId = (function* messageIdGen() {
@@ -21,7 +21,7 @@ export class MessageClient {
     this.socket = undefined;
   }
 
-  public async send(type: string, data?: any) {
+  public async send(type: string, data?: IData) {
     const s = await this.getSocket();
     const id = messageId.next().value;
 

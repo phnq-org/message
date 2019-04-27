@@ -5,9 +5,11 @@ import { Anomaly } from './anomaly';
 import { IData, MessageType } from './constants';
 import { deserialize, serialize } from './serialize';
 
+export type MessageHandlerResponse = IData | (() => AsyncIterableIterator<any>);
+
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage: (type: string, data: IData, conn: Connection) => Promise<any>;
+  public onMessage: (type: string, data: IData, conn: Connection) => Promise<MessageHandlerResponse>;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -16,7 +18,7 @@ export class MessageServer {
       return;
     };
     this.onMessage = async () => {
-      return;
+      return {};
     };
 
     this.setHttpServer(httpServer, path);
@@ -60,7 +62,7 @@ export class MessageServer {
             const resp = await this.onMessage(type, data, connection);
 
             if (typeof resp === 'function') {
-              const respDataIterator = resp();
+              const respDataIterator = resp() as AsyncIterableIterator<any>;
 
               await send({ type: MessageType.MultiBegin, id, data: {} });
 

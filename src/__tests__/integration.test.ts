@@ -2,7 +2,7 @@ import http from 'http';
 import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
 import { IData } from '../constants';
-import MessageServer from '../server';
+import MessageServer, { MessageHandlerResponse } from '../server';
 
 let httpServer: http.Server;
 let messageServer: MessageServer;
@@ -14,7 +14,7 @@ beforeAll(async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (type: string, data: IData): Promise<any> => {
+  messageServer.onMessage = async (type: string, data: IData): Promise<MessageHandlerResponse> => {
     if (type === 'immediate-echo') {
       return data;
     }
@@ -75,7 +75,7 @@ beforeAll(async () => {
       throw new Anomaly('anomaly', { foo: 42 });
     }
 
-    return null;
+    return {};
   };
 });
 

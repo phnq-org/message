@@ -56,7 +56,11 @@ export class MessageClient {
   }
 
   public async close() {
-    (await this.getSocket()).close();
+    try {
+      (await this.getSocket()).close();
+    } finally {
+      this.socket = undefined;
+    }
   }
 
   private async getSocket(): Promise<WebSocket> {
@@ -106,27 +110,36 @@ const getResponseGen = async (msgId: number, s: WebSocket) => {
 
   return async function* respGen() {
     let prev = null;
-    while (true) {
+    let hasMore = true;
+    while (hasMore) {
       const { id, type, data } = await p;
-      if (type === MessageType.MultiEnd) {
-        break;
-      } else if (type === MessageType.MultiIncrement) {
-        if (prev) {
-          const incData: any = prev;
-          data.forEach((diff: any) => {
-            applyChange(incData, diff, diff);
-          });
-          yield { id, type, data: incData };
-          prev = incData;
-        } else {
-          throw new Error('received response increment without previous state');
-        }
-      } else {
-        yield { id, type, data };
-        if (type === MessageType.Response || type === MessageType.InternalError) {
+
+      switch (type) {
+        case MessageType.MultiEnd:
+          hasMore = false;
           break;
-        }
-        prev = data;
+
+        case MessageType.MultiIncrement:
+          if (prev) {
+            const incData: any = prev;
+            data.forEach((diff: any) => {
+              applyChange(incData, diff, diff);
+            });
+            yield { id, type, data: incData };
+            prev = incData;
+          } else {
+            throw new Error('received response increment without previous state');
+          }
+          break;
+
+        case MessageType.MultiBegin:
+        case MessageType.MultiResponse:
+          prev = data;
+          yield { id, type, data };
+          break;
+
+        default:
+          yield { id, type, data };
       }
     }
     s.removeEventListener('message', listener);

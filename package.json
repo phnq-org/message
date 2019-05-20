@@ -20,7 +20,7 @@
     "dist": "tsc",
     "postdist": "ts-node scripts/postdist",
     "clean": "rimraf dist",
-    "test": "jest",
+    "test": "jest --coverage",
     "release:patch": "npm version patch; npm run dist; cd dist; npm publish",
     "release:minor": "npm version minor; npm run dist; cd dist; npm publish"
   },

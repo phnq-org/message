@@ -2,19 +2,21 @@ import http from 'http';
 import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
 import { IData } from '../constants';
-import MessageServer, { MessageHandlerResponse } from '../server';
+import MessageServer, { Connection, MessageHandlerResponse } from '../server';
 
 let httpServer: http.Server;
 let messageServer: MessageServer;
 let messageClient: MessageClient;
 
-beforeAll(async () => {
+const startServer = async () => {
   httpServer = http.createServer();
-  httpServer.listen(55555);
+  await new Promise(resolve => {
+    httpServer.listen({ port: 55555 }, resolve);
+  });
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (type: string, data: IData): Promise<MessageHandlerResponse> => {
+  messageServer.onMessage = async (type: string, data: IData, conn: Connection): Promise<MessageHandlerResponse> => {
     if (type === 'immediate-echo') {
       return data;
     }
@@ -72,23 +74,85 @@ beforeAll(async () => {
     }
 
     if (type === 'trigger-anomaly') {
+      throw new Anomaly('anomaly');
+    }
+
+    if (type === 'trigger-anomaly-with-data') {
       throw new Anomaly('anomaly', { foo: 42 });
+    }
+
+    if (type === 'set-on-connection') {
+      conn.set('the-data', data);
+      return { dataSet: true };
+    }
+
+    if (type === 'get-from-connection') {
+      return { dataFromConn: conn.get('the-data') };
     }
 
     return {};
   };
-});
+};
 
-afterAll(async () => {
-  httpServer.close();
-});
+const stopServer = async () => {
+  if (httpServer.listening) {
+    await new Promise((resolve, reject) => {
+      try {
+        httpServer.close(() => {
+          resolve();
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+};
 
 beforeEach(async () => {
+  await startServer();
   messageClient = new MessageClient('ws://localhost:55555');
 });
 
 afterEach(async () => {
-  await messageClient.close();
+  try {
+    await messageClient.close();
+  } catch (err) {}
+
+  try {
+    await stopServer();
+  } catch (err) {}
+});
+
+test('closed server', async () => {
+  await stopServer();
+
+  try {
+    await messageClient.send('immediate-echo', {});
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Error);
+  }
+});
+
+test('wrong ws path', async () => {
+  messageClient = new MessageClient('ws://localhost:55555/some-wrong-path');
+
+  try {
+    await messageClient.send('immediate-echo', {});
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Error);
+  }
+});
+
+test('no message handler set', async () => {
+  messageServer.onMessage = undefined;
+  try {
+    await messageClient.send('immediate-echo', {});
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Error);
+  }
 });
 
 test('immediate echo', async () => {
@@ -151,6 +215,14 @@ test('incremental', async () => {
   ]);
 });
 
+test('get/set on connection', async () => {
+  const setResult = await messageClient.send('set-on-connection', { fruit: 'apple' });
+  expect(setResult.dataSet).toBe(true);
+
+  const getResult = await messageClient.send('get-from-connection');
+  expect(getResult.dataFromConn).toEqual({ fruit: 'apple' });
+});
+
 test('internal error', async () => {
   try {
     await messageClient.send('trigger-error');
@@ -164,6 +236,16 @@ test('internal error', async () => {
 test('anomaly', async () => {
   try {
     await messageClient.send('trigger-anomaly');
+    fail('Should have thrown');
+  } catch (err) {
+    expect(err).toBeInstanceOf(Anomaly);
+    expect(err.message).toBe('anomaly');
+  }
+});
+
+test('anomaly with data', async () => {
+  try {
+    await messageClient.send('trigger-anomaly-with-data');
     fail('Should have thrown');
   } catch (err) {
     expect(err).toBeInstanceOf(Anomaly);

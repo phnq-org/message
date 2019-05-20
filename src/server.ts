@@ -9,7 +9,7 @@ export type MessageHandlerResponse = IData | (() => AsyncIterableIterator<any>);
 
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage: (type: string, data: IData, conn: Connection) => Promise<MessageHandlerResponse>;
+  public onMessage?: (type: string, data: IData, conn: Connection) => Promise<MessageHandlerResponse>;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -17,10 +17,6 @@ export class MessageServer {
     this.onConnect = () => {
       return;
     };
-    this.onMessage = async () => {
-      return {};
-    };
-
     this.setHttpServer(httpServer, path);
   }
 
@@ -59,6 +55,10 @@ export class MessageServer {
 
         if (connection) {
           try {
+            if (!this.onMessage) {
+              throw new Error('No message handler configured');
+            }
+
             const resp = await this.onMessage(type, data, connection);
 
             if (typeof resp === 'function') {

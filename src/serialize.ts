@@ -1,6 +1,4 @@
-import { pack, unpack } from 'jsonpack';
-
-export const serialize = (val: any): string => pack(annotate(val));
+export const serialize = (val: any): string => JSON.stringify(annotate(val));
 
 const annotate = (val: any): any => {
   if (val instanceof Array) {
@@ -24,7 +22,7 @@ const annotate = (val: any): any => {
   return val;
 };
 
-export const deserialize = (str: string) => deannotate(unpack(str));
+export const deserialize = (str: string) => deannotate(JSON.parse(str));
 
 const DATE_RE = /^(.+)@@@D$/;
 

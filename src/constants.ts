@@ -2,7 +2,6 @@ export enum MessageType {
   Response = 'r',
   MultiBegin = 'mb',
   MultiResponse = 'mr',
-  MultiIncrement = 'mi',
   MultiEnd = 'me',
   InternalError = 'err',
   Anomaly = 'an',

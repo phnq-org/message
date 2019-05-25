@@ -1,4 +1,3 @@
-import { diff, Diff } from 'deep-diff';
 import http from 'http';
 import WebSocket from 'ws';
 import { Anomaly } from './anomaly';
@@ -41,7 +40,7 @@ export class MessageServer {
       // Notify of new connections
       this.onConnect(connection);
 
-      const send = async (message: { type: MessageType; id: string; data: IValue | Array<Diff<any, any>> }) => {
+      const send = async (message: { type: MessageType; id: string; data: IValue }) => {
         // Need this for multi responses
         await wait(0);
         ws.send(serialize(message));
@@ -68,23 +67,11 @@ export class MessageServer {
 
               for await (const respData of respDataIterator) {
                 if (prev) {
-                  const inc = diff(prev, respData);
-                  // If increment size is less than raw size then send back the increment
-                  if (JSON.stringify(inc) < JSON.stringify(respData)) {
-                    if (inc) {
-                      await send({
-                        data: inc,
-                        id,
-                        type: MessageType.MultiIncrement,
-                      });
-                    }
-                  } else {
-                    await send({
-                      data: respData,
-                      id,
-                      type: MessageType.MultiResponse,
-                    });
-                  }
+                  await send({
+                    data: respData,
+                    id,
+                    type: MessageType.MultiResponse,
+                  });
                 } else {
                   await send({
                     data: respData,

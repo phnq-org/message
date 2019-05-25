@@ -1,4 +1,3 @@
-import { applyChange } from 'deep-diff';
 import WebSocket from 'isomorphic-ws';
 import { Anomaly } from './anomaly';
 import { IValue, MessageType, MultiData } from './constants';
@@ -119,7 +118,6 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
       switch (type) {
         case MessageType.Response:
         case MessageType.MultiResponse:
-        case MessageType.MultiIncrement:
         case MessageType.InternalError:
         case MessageType.Anomaly:
           stats.responses.push({ type, time: Date.now() - start, size: (event.data as string).length });
@@ -135,7 +133,6 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
   s.addEventListener('message', listener);
 
   return async function* respGen() {
-    let prev = null;
     let hasMore = true;
     while (hasMore) {
       const { id, type, data } = await p;
@@ -145,22 +142,8 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
           hasMore = false;
           break;
 
-        case MessageType.MultiIncrement:
-          if (prev) {
-            const incData: any = prev;
-            data.forEach((diff: any) => {
-              applyChange(incData, diff, diff);
-            });
-            yield { id, type, data: incData };
-            prev = incData;
-          } else {
-            throw new Error('received response increment without previous state');
-          }
-          break;
-
         case MessageType.MultiBegin:
         case MessageType.MultiResponse:
-          prev = data;
           yield { id, type, data };
           break;
 

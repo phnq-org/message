@@ -1,8 +1,8 @@
 import http from 'http';
 import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
-import { IData } from '../constants';
-import MessageServer, { Connection, MessageHandlerResponse } from '../server';
+import { IData, IValue, MultiData } from '../constants';
+import MessageServer, { Connection } from '../server';
 
 let httpServer: http.Server;
 let messageServer: MessageServer;
@@ -16,7 +16,7 @@ const startServer = async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (type: string, data: IData, conn: Connection): Promise<MessageHandlerResponse> => {
+  messageServer.onMessage = async (type: string, data: IValue, conn: Connection): Promise<IValue | MultiData> => {
     if (type === 'immediate-echo') {
       return data;
     }
@@ -49,7 +49,7 @@ const startServer = async () => {
     }
 
     if (type === 'incremental') {
-      return async function* getIncremental() {
+      return async function*() {
         let artist: { name: string; bio?: string; tags?: string[] } = {
           name: 'Artist Name',
         };
@@ -169,7 +169,7 @@ test('delayed echo', async () => {
 });
 
 test('immediate multi-response', async () => {
-  const result = await messageClient.send('immediate-multi');
+  const result = (await messageClient.send('immediate-multi')) as MultiData;
 
   const respDatas = [];
 
@@ -181,7 +181,7 @@ test('immediate multi-response', async () => {
 });
 
 test('delayed multi-response', async () => {
-  const result = await messageClient.send('delayed-multi');
+  const result = (await messageClient.send('delayed-multi')) as MultiData;
 
   const respDatas = [];
 
@@ -193,7 +193,7 @@ test('delayed multi-response', async () => {
 });
 
 test('incremental', async () => {
-  const result = await messageClient.send('incremental');
+  const result = (await messageClient.send('incremental', {})) as MultiData;
 
   const respDatas = [];
 
@@ -216,10 +216,10 @@ test('incremental', async () => {
 });
 
 test('get/set on connection', async () => {
-  const setResult = await messageClient.send('set-on-connection', { fruit: 'apple' });
+  const setResult = (await messageClient.send('set-on-connection', { fruit: 'apple' })) as IData;
   expect(setResult.dataSet).toBe(true);
 
-  const getResult = await messageClient.send('get-from-connection');
+  const getResult = (await messageClient.send('get-from-connection')) as IData;
   expect(getResult.dataFromConn).toEqual({ fruit: 'apple' });
 });
 

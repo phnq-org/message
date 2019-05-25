@@ -1,7 +1,7 @@
 import { applyChange } from 'deep-diff';
 import WebSocket from 'isomorphic-ws';
 import { Anomaly } from './anomaly';
-import { IData, MessageType } from './constants';
+import { IValue, MessageType, MultiData } from './constants';
 import { deserialize, serialize } from './serialize';
 
 const messageId = (function* messageIdGen() {
@@ -21,13 +21,22 @@ export class MessageClient {
     this.socket = undefined;
   }
 
-  public async send(type: string, data?: IData) {
+  public async send(
+    type: string,
+    data?: IValue,
+    stats: MessageStats = new MessageStats(),
+  ): Promise<IValue | MultiData> {
     const s = await this.getSocket();
     const id = messageId.next().value;
 
-    const responseGen = await getResponseGen(id, s);
+    const responseGen = await getResponseGen(id, s, stats);
 
-    s.send(serialize({ id, type, data }));
+    const msg = serialize({ id, type, data });
+
+    stats.request.type = type;
+    stats.request.size = msg.length;
+
+    s.send(msg);
 
     const responseIter = responseGen();
 
@@ -89,16 +98,33 @@ export class MessageClient {
 
 export default MessageClient;
 
-const getResponseGen = async (msgId: number, s: WebSocket) => {
+// tslint:disable-next-line: max-classes-per-file
+export class MessageStats {
+  public request: { type: string; size: number } = { type: '', size: 0 };
+  public responses: Array<{ type: string; size: number; time: number }> = [];
+}
+
+const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) => {
   let r: (msg: any) => void;
   let p = new Promise<any>(resolve => {
     r = resolve;
   });
 
+  const start = Date.now();
+
   const listener = (event: any) => {
     const { id, type, data } = deserialize(event.data);
 
     if (id === msgId) {
+      switch (type) {
+        case MessageType.Response:
+        case MessageType.MultiResponse:
+        case MessageType.MultiIncrement:
+        case MessageType.InternalError:
+        case MessageType.Anomaly:
+          stats.responses.push({ type, time: Date.now() - start, size: (event.data as string).length });
+      }
+
       r({ id, type, data });
       p = new Promise<any>(resolve => {
         r = resolve;

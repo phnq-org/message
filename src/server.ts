@@ -2,14 +2,12 @@ import { diff, Diff } from 'deep-diff';
 import http from 'http';
 import WebSocket from 'ws';
 import { Anomaly } from './anomaly';
-import { IData, MessageType } from './constants';
+import { IValue, MessageType, MultiData } from './constants';
 import { deserialize, serialize } from './serialize';
-
-export type MessageHandlerResponse = IData | (() => AsyncIterableIterator<any>);
 
 export class MessageServer {
   public onConnect: (conn: Connection) => void;
-  public onMessage?: (type: string, data: IData, conn: Connection) => Promise<MessageHandlerResponse>;
+  public onMessage?: (type: string, data: IValue, conn: Connection) => Promise<IValue | MultiData>;
   private wss?: WebSocket.Server;
 
   constructor(httpServer: http.Server, path?: string) {
@@ -43,7 +41,7 @@ export class MessageServer {
       // Notify of new connections
       this.onConnect(connection);
 
-      const send = async (message: { type: MessageType; id: string; data: IData | Array<Diff<any, any>> }) => {
+      const send = async (message: { type: MessageType; id: string; data: IValue | Array<Diff<any, any>> }) => {
         // Need this for multi responses
         await wait(0);
         ws.send(serialize(message));

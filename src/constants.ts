@@ -1,11 +1,11 @@
 export enum MessageType {
-  Response,
-  MultiBegin,
-  MultiResponse,
-  MultiIncrement,
-  MultiEnd,
-  InternalError,
-  Anomaly,
+  Response = 'r',
+  MultiBegin = 'mb',
+  MultiResponse = 'mr',
+  MultiIncrement = 'mi',
+  MultiEnd = 'me',
+  InternalError = 'err',
+  Anomaly = 'an',
 }
 
 export type IValue = string | number | boolean | Date | IData | undefined;
@@ -13,3 +13,5 @@ export type IValue = string | number | boolean | Date | IData | undefined;
 export interface IData {
   [key: string]: IValue | IValue[];
 }
+
+export type MultiData = (() => AsyncIterableIterator<IValue>);

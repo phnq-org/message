@@ -2,7 +2,7 @@ import http from 'http';
 import { Anomaly } from '../anomaly';
 import MessageClient from '../client';
 import { IData, IValue, MultiData } from '../constants';
-import MessageServer, { Connection } from '../server';
+import MessageServer, { IConnection } from '../server';
 
 let httpServer: http.Server;
 let messageServer: MessageServer;
@@ -16,7 +16,7 @@ const startServer = async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  messageServer.onMessage = async (type: string, data: IValue, conn: Connection): Promise<IValue | MultiData> => {
+  messageServer.onMessage = async (type: string, data: IValue, conn: IConnection): Promise<IValue | MultiData> => {
     if (type === 'immediate-echo') {
       return data;
     }

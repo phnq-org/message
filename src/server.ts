@@ -45,7 +45,7 @@ export class MessageServer {
 }
 
 export interface IConnection {
-  send(message: { type: MessageType; id: string; data: IValue }): Promise<void>;
+  push(type: string, data: IValue): Promise<void>;
   close(): void;
   onClose(fn: () => void): void;
   get(key: string): any;
@@ -71,6 +71,10 @@ class Connection {
 
   public async send(message: { type: MessageType; id: string; data: IValue }) {
     this.ws.send(serialize(message));
+  }
+
+  public async push(type: string, data: IValue) {
+    this.ws.send(serialize({ type, data }));
   }
 
   public onClose(fn: () => void) {

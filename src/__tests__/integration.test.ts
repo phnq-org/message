@@ -7,6 +7,7 @@ import MessageServer, { IConnection } from '../server';
 let httpServer: http.Server;
 let messageServer: MessageServer;
 let messageClient: MessageClient;
+const connections = new Set<IConnection>();
 
 const startServer = async () => {
   httpServer = http.createServer();
@@ -15,6 +16,11 @@ const startServer = async () => {
   });
 
   messageServer = new MessageServer(httpServer);
+
+  connections.clear();
+  messageServer.onConnect = (conn: IConnection) => {
+    connections.add(conn);
+  };
 
   messageServer.onMessage = async (type: string, data: IValue, conn: IConnection): Promise<IValue | MultiData> => {
     if (type === 'immediate-echo') {
@@ -254,7 +260,22 @@ test('anomaly with data', async () => {
   }
 });
 
-const wait = (millis: number) =>
+test('push from server', async () => {
+  const handler = jest.fn();
+
+  await messageClient.on('push-me', handler);
+
+  expect(connections.size).toBe(1);
+
+  connections.forEach(async conn => {
+    await conn.push('push-me', { foo: 'bar', num: 42 });
+  });
+
+  await wait();
+  expect(handler).toHaveBeenCalled();
+});
+
+const wait = (millis: number = 0) =>
   new Promise(resolve => {
     setTimeout(resolve, millis);
   });

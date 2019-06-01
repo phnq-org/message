@@ -11,13 +11,30 @@ const messageId = (function* messageIdGen() {
   }
 })();
 
+type PushHandler = (data: IValue) => void;
+
 export class MessageClient {
   private url: string;
   private socket?: WebSocket;
+  private pushHandlers = new Map<string, Set<PushHandler>>();
 
   constructor(url: string) {
     this.url = url;
     this.socket = undefined;
+  }
+
+  public async on(type: string, handler: PushHandler) {
+    if (this.pushHandlers.size === 0) {
+      const s = await this.getSocket();
+      s.addEventListener('message', this.onReceive);
+    }
+
+    let handlers = this.pushHandlers.get(type);
+    if (!handlers) {
+      handlers = new Set<PushHandler>();
+      this.pushHandlers.set(type, handlers);
+    }
+    handlers.add(handler);
   }
 
   public async send(
@@ -71,6 +88,17 @@ export class MessageClient {
     }
   }
 
+  private onReceive = ({ data: eventData }: { data: any }) => {
+    const { type, data } = deserialize(eventData);
+
+    const handlers = this.pushHandlers.get(type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        handler(data);
+      });
+    }
+  };
+
   private async getSocket(): Promise<WebSocket> {
     if (this.socket) {
       return this.socket;
@@ -111,8 +139,8 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
 
   const start = Date.now();
 
-  const listener = (event: any) => {
-    const { id, type, data } = deserialize(event.data);
+  const listener = ({ data: eventData }: { data: any }) => {
+    const { id, type, data } = deserialize(eventData);
 
     if (id === msgId) {
       switch (type) {
@@ -120,7 +148,7 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
         case MessageType.MultiResponse:
         case MessageType.InternalError:
         case MessageType.Anomaly:
-          stats.responses.push({ type, time: Date.now() - start, size: (event.data as string).length });
+          stats.responses.push({ type, time: Date.now() - start, size: (eventData as string).length });
       }
 
       r({ id, type, data });

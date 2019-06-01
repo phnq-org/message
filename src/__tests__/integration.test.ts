@@ -272,7 +272,7 @@ test('push from server', async () => {
   });
 
   await wait();
-  expect(handler).toHaveBeenCalled();
+  expect(handler).toHaveBeenCalledWith({ foo: 'bar', num: 42 });
 });
 
 const wait = (millis: number = 0) =>

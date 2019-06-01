@@ -21,8 +21,8 @@
     "postdist": "ts-node scripts/postdist",
     "clean": "rimraf dist",
     "test": "jest --coverage",
-    "release:patch": "npm version patch; npm run dist; cd dist; npm publish",
-    "release:minor": "npm version minor; npm run dist; cd dist; npm publish"
+    "release:patch": "npm version patch; git push; npm run dist; cd dist; npm publish",
+    "release:minor": "npm version minor; git push; npm run dist; cd dist; npm publish"
   },
   "engines": {
     "node": ">=10"

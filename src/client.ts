@@ -81,7 +81,7 @@ export class MessageClient {
   }
 
   public async close() {
-    if (this.socket) {
+    if (this.socket && [WebSocket.OPEN, WebSocket.CONNECTING].indexOf(this.socket.readyState) !== -1) {
       try {
         this.socket.close();
       } finally {

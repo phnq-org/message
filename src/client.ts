@@ -81,10 +81,12 @@ export class MessageClient {
   }
 
   public async close() {
-    try {
-      (await this.getSocket()).close();
-    } finally {
-      this.socket = undefined;
+    if (this.socket) {
+      try {
+        this.socket.close();
+      } finally {
+        this.socket = undefined;
+      }
     }
   }
 

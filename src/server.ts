@@ -16,6 +16,20 @@ export class MessageServer {
     this.setHttpServer(httpServer, path);
   }
 
+  public async close(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.wss) {
+        this.wss.close(err => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      }
+    });
+  }
+
   private setHttpServer(httpServer: http.Server, path: string = '/') {
     httpServer.on('upgrade', (request, socket) => {
       if (request.url !== path) {

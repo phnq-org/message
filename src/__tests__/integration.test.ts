@@ -101,6 +101,7 @@ const startServer = async () => {
 };
 
 const stopServer = async () => {
+  await messageServer.close();
   if (httpServer.listening) {
     await new Promise((resolve, reject) => {
       try {

@@ -23,6 +23,9 @@ const startServer = async () => {
   };
 
   messageServer.onMessage = async (type: string, data: IValue, conn: IConnection): Promise<IValue | MultiData> => {
+    expect(conn.getUpgradeHeaders().connection).toBe('Upgrade');
+    expect(conn.getUpgradeHeaders().upgrade).toBe('websocket');
+
     if (type === 'immediate-echo') {
       return data;
     }

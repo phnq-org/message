@@ -11,6 +11,7 @@ export class MessageServer {
   public onConnect?: (conn: IConnection) => void;
   public onMessage?: MessageHandler;
   private wss?: WebSocket.Server;
+  private connections = new Map<number, IConnection>();
 
   constructor(httpServer: http.Server, path?: string) {
     this.wss = undefined;
@@ -31,6 +32,14 @@ export class MessageServer {
     });
   }
 
+  public getConnectionById(id: number): IConnection | undefined {
+    return this.connections.get(id);
+  }
+
+  public getConnections() {
+    return [...this.connections.values()];
+  }
+
   private setHttpServer(httpServer: http.Server, path: string = '/') {
     httpServer.on('upgrade', (req: http.IncomingMessage, socket: net.Socket) => {
       if (req.url !== path) {
@@ -46,8 +55,13 @@ export class MessageServer {
       // Instantiate a Connection object to hold state
       let connection: IConnection | undefined = new Connection(ws, req.headers, this.onMessage);
 
+      this.connections.set(connection.getId(), connection);
+
       // Close socket from within the connection
       connection.onClose(() => {
+        if (connection) {
+          this.connections.delete(connection.getId());
+        }
         connection = undefined;
       });
 
@@ -60,6 +74,7 @@ export class MessageServer {
 }
 
 export interface IConnection {
+  getId(): number;
   getUpgradeHeaders(): http.IncomingHttpHeaders;
   push(type: string, data: IValue): Promise<void>;
   close(): void;
@@ -68,8 +83,17 @@ export interface IConnection {
   set(key: string, value: any): void;
 }
 
+const connectionId = (function* connectionIdGen() {
+  let i = 0;
+  while (true) {
+    i += 1;
+    yield i;
+  }
+})();
+
 /* tslint:disable max-classes-per-file */
 class Connection {
+  private id: number;
   private ws: WebSocket;
   private headers: http.IncomingHttpHeaders;
   private onMessage?: MessageHandler;
@@ -77,6 +101,7 @@ class Connection {
   private onCloses: Set<() => void>;
 
   constructor(ws: WebSocket, headers: http.IncomingHttpHeaders, onMessage?: MessageHandler) {
+    this.id = connectionId.next().value;
     this.ws = ws;
     this.headers = headers;
     this.onMessage = onMessage;
@@ -85,6 +110,10 @@ class Connection {
 
     this.ws.on('close', this.onCloseFn);
     this.ws.on('message', this.onMessageFn);
+  }
+
+  public getId() {
+    return this.id;
   }
 
   public getUpgradeHeaders(): http.IncomingHttpHeaders {

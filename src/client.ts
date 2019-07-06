@@ -58,6 +58,18 @@ export class MessageClient {
 
     const { type: rcvType, data: rcvData } = (await responseIter.next()).value;
 
+    if (rcvType === MessageType.MultiBegin) {
+      return async function* multi() {
+        for await (const { data: respData } of responseIter) {
+          yield respData;
+        }
+      };
+    }
+
+    if (!(await responseIter.next()).done) {
+      throw new Error('Response itertor should only yield one value.');
+    }
+
     switch (rcvType) {
       case MessageType.Anomaly:
         throw new Anomaly(rcvData.message, rcvData.data);
@@ -67,13 +79,6 @@ export class MessageClient {
 
       case MessageType.Response:
         return rcvData;
-
-      case MessageType.MultiBegin:
-        return async function* multi() {
-          for await (const { data: respData } of responseIter) {
-            yield respData;
-          }
-        };
 
       default:
         throw new Error(`Unknown response message type '${rcvType}'`);
@@ -178,6 +183,7 @@ const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) 
           break;
 
         default:
+          hasMore = false;
           yield { id, type, data };
       }
     }

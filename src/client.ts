@@ -23,6 +23,10 @@ export class MessageClient {
     this.socket = undefined;
   }
 
+  public isConnected() {
+    return this.socket !== undefined;
+  }
+
   public async on(type: string, handler: PushHandler) {
     if (this.pushHandlers.size === 0) {
       const s = await this.getSocket();

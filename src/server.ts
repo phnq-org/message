@@ -76,6 +76,7 @@ export class MessageServer {
 export interface IConnection {
   getId(): number;
   getUpgradeHeaders(): http.IncomingHttpHeaders;
+  send(type: MessageType, id: string, data: IValue): Promise<void>;
   push(type: string, data: IValue): Promise<void>;
   close(): void;
   onClose(fn: () => void): void;
@@ -120,8 +121,8 @@ class Connection {
     return this.headers;
   }
 
-  public async send(message: { type: MessageType; id: string; data: IValue }) {
-    this.ws.send(serialize(message));
+  public async send(type: MessageType, id: string, data: IValue) {
+    this.ws.send(serialize({ type, id, data }));
   }
 
   public async push(type: string, data: IValue) {
@@ -133,7 +134,10 @@ class Connection {
   }
 
   public close() {
-    this.ws.close(1000, 'Closed by server');
+    // this allows the response to be sent before closing.
+    setTimeout(() => {
+      this.ws.close(1000, 'Closed by server');
+    }, 0);
   }
 
   public get(key: string): any {
@@ -166,53 +170,24 @@ class Connection {
       if (typeof resp === 'function') {
         const respDataIterator = resp() as AsyncIterableIterator<any>;
 
-        await this.send({ type: MessageType.MultiBegin, id, data: {} });
-
-        let prev = null;
+        await this.send(MessageType.MultiBegin, id, {});
 
         for await (const respData of respDataIterator) {
-          if (prev) {
-            await wait();
-            await this.send({
-              data: respData,
-              id,
-              type: MessageType.MultiResponse,
-            });
-          } else {
-            await wait();
-            await this.send({
-              data: respData,
-              id,
-              type: MessageType.MultiResponse,
-            });
-          }
-          prev = respData;
+          await wait();
+          await this.send(MessageType.MultiResponse, id, respData);
         }
 
         await wait();
-        await this.send({ type: MessageType.MultiEnd, id, data: {} });
+        await this.send(MessageType.MultiEnd, id, {});
       } else {
         const respData = resp;
-        await this.send({ type: MessageType.Response, id, data: respData });
+        await this.send(MessageType.Response, id, respData);
       }
     } catch (err) {
       if (err instanceof Anomaly) {
-        await this.send({
-          data: {
-            data: err.data,
-            message: err.message,
-          },
-          id,
-          type: MessageType.Anomaly,
-        });
+        await this.send(MessageType.Anomaly, id, { data: err.data, message: err.message });
       } else {
-        await this.send({
-          data: {
-            message: err.message,
-          },
-          id,
-          type: MessageType.InternalError,
-        });
+        await this.send(MessageType.InternalError, id, { message: err.message });
       }
     }
   };

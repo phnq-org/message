@@ -7,7 +7,6 @@ import MessageServer, { IConnection } from '../server';
 let httpServer: http.Server;
 let messageServer: MessageServer;
 let messageClient: MessageClient;
-const connections = new Set<IConnection>();
 
 const startServer = async () => {
   httpServer = http.createServer();
@@ -17,12 +16,8 @@ const startServer = async () => {
 
   messageServer = new MessageServer(httpServer);
 
-  connections.clear();
-  messageServer.onConnect = (conn: IConnection) => {
-    connections.add(conn);
-  };
-
   messageServer.onMessage = async (type: string, data: IValue, conn: IConnection): Promise<IValue | MultiData> => {
+    expect(conn).toBe(messageServer.getConnectionById(conn.getId()));
     expect(conn.getUpgradeHeaders().connection).toBe('Upgrade');
     expect(conn.getUpgradeHeaders().upgrade).toBe('websocket');
 
@@ -97,6 +92,10 @@ const startServer = async () => {
 
     if (type === 'get-from-connection') {
       return { dataFromConn: conn.get('the-data') };
+    }
+
+    if (type === 'close-from-server') {
+      conn.close();
     }
 
     return {};
@@ -269,7 +268,9 @@ test('push from server', async () => {
 
   await messageClient.on('push-me', handler);
 
-  expect(connections.size).toBe(1);
+  const connections = messageServer.getConnections();
+
+  expect(connections.length).toBe(1);
 
   connections.forEach(async conn => {
     await conn.push('push-me', { foo: 'bar', num: 42 });
@@ -277,6 +278,21 @@ test('push from server', async () => {
 
   await wait();
   expect(handler).toHaveBeenCalledWith({ foo: 'bar', num: 42 });
+});
+
+test('closed from server', async () => {
+  await messageClient.send('ignored');
+  expect(messageClient.isConnected()).toBe(true);
+  await messageClient.send('close-from-server');
+  await wait(100);
+  expect(messageClient.isConnected()).toBe(false);
+});
+
+test('onConnect', async () => {
+  const handler = jest.fn();
+  messageServer.onConnect = handler;
+  await messageClient.send('ignored');
+  expect(handler).toHaveBeenCalled();
 });
 
 const wait = (millis: number = 0) =>

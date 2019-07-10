@@ -49,7 +49,7 @@ export class MessageClient {
     const s = await this.getSocket();
     const id = messageId.next().value;
 
-    const responseGen = await getResponseGen(id, s, stats);
+    const responseGen = getResponseGen(id, s, stats);
 
     const msg = serialize({ id, type, data });
 
@@ -142,7 +142,7 @@ export class MessageStats {
   public responses: Array<{ type: string; size: number; time: number }> = [];
 }
 
-const getResponseGen = async (msgId: number, s: WebSocket, stats: MessageStats) => {
+const getResponseGen = (msgId: number, s: WebSocket, stats: MessageStats) => {
   let r: (msg: any) => void;
   let p = new Promise<any>(resolve => {
     r = resolve;

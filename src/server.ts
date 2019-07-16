@@ -76,8 +76,8 @@ export class MessageServer {
 export interface IConnection {
   getId(): number;
   getUpgradeHeaders(): http.IncomingHttpHeaders;
-  send(type: MessageType, id: string, data: IValue): Promise<void>;
-  push(type: string, data: IValue): Promise<void>;
+  send(type: MessageType, id: string, data: IValue): void;
+  push(type: string, data: IValue): void;
   close(): void;
   onClose(fn: () => void): void;
   get(key: string): any;
@@ -121,11 +121,11 @@ class Connection {
     return this.headers;
   }
 
-  public async send(type: MessageType, id: string, data: IValue) {
+  public send(type: MessageType, id: string, data: IValue) {
     this.ws.send(serialize({ type, id, data }));
   }
 
-  public async push(type: string, data: IValue) {
+  public push(type: string, data: IValue) {
     this.ws.send(serialize({ type, data }));
   }
 
@@ -170,24 +170,24 @@ class Connection {
       if (typeof resp === 'function') {
         const respDataIterator = resp() as AsyncIterableIterator<any>;
 
-        await this.send(MessageType.MultiBegin, id, {});
+        this.send(MessageType.MultiBegin, id, {});
 
         for await (const respData of respDataIterator) {
           await wait();
-          await this.send(MessageType.MultiResponse, id, respData);
+          this.send(MessageType.MultiResponse, id, respData);
         }
 
         await wait();
-        await this.send(MessageType.MultiEnd, id, {});
+        this.send(MessageType.MultiEnd, id, {});
       } else {
         const respData = resp;
-        await this.send(MessageType.Response, id, respData);
+        this.send(MessageType.Response, id, respData);
       }
     } catch (err) {
       if (err instanceof Anomaly) {
-        await this.send(MessageType.Anomaly, id, { data: err.data, message: err.message });
+        this.send(MessageType.Anomaly, id, { data: err.data, message: err.message });
       } else {
-        await this.send(MessageType.InternalError, id, { message: err.message });
+        this.send(MessageType.InternalError, id, { message: err.message });
       }
     }
   };

@@ -1,4 +1,4 @@
-import { Anomaly } from '../Anomaly';
+import Anomaly from '../Anomaly';
 import { MessageConnection } from '../MessageConnection';
 import DirectTransport from '../transports/DirectTransport';
 

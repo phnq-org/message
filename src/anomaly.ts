@@ -1,10 +1,15 @@
 export class Anomaly extends Error {
-  public data: {
+  public info?: {
     [key: string]: string | number | boolean;
   };
 
-  constructor(message: string, data = {}) {
+  constructor(
+    message: string,
+    info?: {
+      [key: string]: string | number | boolean;
+    },
+  ) {
     super(message);
-    this.data = data;
+    this.info = info;
   }
 }

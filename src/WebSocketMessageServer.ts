@@ -5,11 +5,16 @@ import uuid from 'uuid/v4';
 import { IValue, MessageConnection } from './MessageConnection';
 import { WebSocketTransport } from './transports/WebSocketTransport';
 
+export type ConnectionId = string;
+
 export class WebSocketMessageServer<R> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
-  private receive: (message: R) => AsyncIterableIterator<IValue> | Promise<IValue>;
-  private connections = new Map<string, MessageConnection>();
+  private receiveHandler: (
+    connectionId: ConnectionId,
+    message: R,
+  ) => AsyncIterableIterator<IValue> | Promise<IValue | undefined>;
+  private connections = new Map<ConnectionId, MessageConnection>();
 
   constructor({
     httpServer,
@@ -17,13 +22,17 @@ export class WebSocketMessageServer<R> {
     path = '/',
   }: {
     httpServer: http.Server;
-    onReceive: (message: R) => AsyncIterableIterator<IValue> | Promise<IValue>;
+    onReceive: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<IValue> | Promise<IValue | undefined>;
     path?: string;
   }) {
     this.httpServer = httpServer;
-    this.receive = onReceive;
+    this.receiveHandler = onReceive;
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path);
+  }
+
+  public getConnection(id: ConnectionId) {
+    return this.connections.get(id);
   }
 
   public async close() {
@@ -42,11 +51,13 @@ export class WebSocketMessageServer<R> {
     this.wss.on('connection', (socket: WebSocket) => {
       const connection = new MessageConnection(new WebSocketTransport(socket));
 
-      const id = uuid();
+      const connectionId = uuid();
 
-      this.connections.set(id, connection);
+      this.connections.set(connectionId, connection);
 
-      connection.onReceive<R>(this.receive);
+      connection.onReceive<R>((message: R) => {
+        return this.receiveHandler(connectionId, message);
+      });
     });
   }
 }

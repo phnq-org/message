@@ -1,6 +1,6 @@
 import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
-import { Anomaly } from './Anomaly';
+import { Anomaly } from './errors';
 import { IAnomalyMessage, IErrorMessage, IMessage, IMessageTransport, MessageType } from './MessageTransport';
 
 const log = createLogger('MessageConnection');

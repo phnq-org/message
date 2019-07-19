@@ -1,10 +1,11 @@
 import http from 'http';
 import WebSocket from 'isomorphic-ws';
 import net from 'net';
+import uuid from 'uuid/v4';
 import { IValue, MessageConnection } from './MessageConnection';
-import WebSocketTransport from './transports/WebSocketTransport';
+import { WebSocketTransport } from './transports/WebSocketTransport';
 
-export default class WebSocketMessageServer<R> {
+export class WebSocketMessageServer<R> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
   private receive: (message: R) => AsyncIterableIterator<IValue> | Promise<IValue>;
@@ -41,7 +42,9 @@ export default class WebSocketMessageServer<R> {
     this.wss.on('connection', (socket: WebSocket) => {
       const connection = new MessageConnection(new WebSocketTransport(socket));
 
-      this.connections.set(connection.id, connection);
+      const id = uuid();
+
+      this.connections.set(id, connection);
 
       connection.onReceive<R>(this.receive);
     });

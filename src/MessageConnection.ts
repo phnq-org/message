@@ -1,7 +1,6 @@
 import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
-import uuid from 'uuid/v4';
-import Anomaly from './Anomaly';
+import { Anomaly } from './Anomaly';
 import { IAnomalyMessage, IErrorMessage, IMessage, IMessageTransport, MessageType } from './MessageTransport';
 
 const log = createLogger('MessageConnection');
@@ -20,7 +19,6 @@ export interface IData {
 }
 
 export class MessageConnection {
-  private uuid = uuid();
   private transport: IMessageTransport;
   private responseQueues = new Map<number, AsyncQueue<IMessage>>();
   private receive?: (message: any) => AsyncIterableIterator<IValue> | Promise<IValue>;
@@ -50,10 +48,6 @@ export class MessageConnection {
           break;
       }
     });
-  }
-
-  public get id() {
-    return this.uuid;
   }
 
   public async requestOne<R = any>(data: any): Promise<R> {

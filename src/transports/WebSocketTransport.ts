@@ -2,7 +2,7 @@ import WebSocket from 'isomorphic-ws';
 import { IMessage, IMessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-export default class WebSocketTransport implements IMessageTransport {
+export class WebSocketTransport implements IMessageTransport {
   private socket: WebSocket;
 
   constructor(socket: WebSocket) {

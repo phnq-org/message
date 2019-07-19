@@ -1,6 +1,6 @@
 import { IMessage, IMessageTransport } from '../MessageTransport';
 
-export default class DirectTransport implements IMessageTransport {
+export class DirectTransport implements IMessageTransport {
   private connectedTransport: DirectTransport;
 
   constructor(transport?: DirectTransport) {

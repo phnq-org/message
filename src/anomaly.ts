@@ -1,4 +1,4 @@
-export default class Anomaly extends Error {
+export class Anomaly extends Error {
   public info?: {
     [key: string]: string | number | boolean;
   };

@@ -15,7 +15,8 @@
     "type": "git",
     "url": "git+https://github.com/pgostovic/message.git"
   },
-  "main": "index.js",
+  "main": "index.server.js",
+  "browser": "index.client.js",
   "scripts": {
     "dist": "tsc",
     "postdist": "ts-node scripts/postdist",

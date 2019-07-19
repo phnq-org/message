@@ -1,6 +1,4 @@
-import Anomaly from '../Anomaly';
-import { MessageConnection } from '../MessageConnection';
-import DirectTransport from '../transports/DirectTransport';
+import { Anomaly, DirectTransport, MessageConnection } from '../index.client';
 
 describe('MessageConnection', () => {
   describe('with DirectTransport', () => {

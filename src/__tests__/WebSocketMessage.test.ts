@@ -1,7 +1,6 @@
 import http from 'http';
-import { IValue } from '../MessageConnection';
-import WebSocketMessageClient from '../WebSocketMessageClient';
-import WebSocketMessageServer from '../WebSocketMessageServer';
+import { IValue, WebSocketMessageClient } from '../index.client';
+import { WebSocketMessageServer } from '../index.server';
 
 describe('MessageConnection', () => {
   describe('with WebSocketTransport', () => {

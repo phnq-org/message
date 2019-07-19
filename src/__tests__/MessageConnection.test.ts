@@ -1,127 +1,127 @@
 import { Anomaly, DirectTransport, MessageConnection } from '../index.client';
 
+const serverTransport = new DirectTransport();
+const serverConnection = new MessageConnection(serverTransport);
+const clientConnection = new MessageConnection(serverTransport.getConnectedTransport());
+
 describe('MessageConnection', () => {
   describe('with DirectTransport', () => {
-    it('should handle multiple responses with an async iterator', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
+    describe('requests with multiple responses', () => {
+      it('should handle multiple responses with an async iterator', async () => {
+        serverConnection.onReceive<string>(message =>
+          (async function*() {
+            expect(message).toBe('knock knock');
 
-      serverConnection.onReceive<string>(message =>
-        (async function*() {
-          expect(message).toBe('knock knock');
+            yield "who's";
+            yield 'there';
+            yield '?';
+          })(),
+        );
 
-          yield "who's";
-          yield 'there';
-          yield '?';
-        })(),
-      );
+        const resps1 = [];
+        for await (const resp of await clientConnection.request<string>('knock knock')) {
+          resps1.push(resp);
+        }
 
-      const resps1 = [];
-      for await (const resp of await clientConnection.request<string>('knock knock')) {
-        resps1.push(resp);
-      }
+        expect(resps1).toEqual(["who's", 'there', '?']);
 
-      expect(resps1).toEqual(["who's", 'there', '?']);
+        const resps2 = [];
+        for await (const resp of await clientConnection.request<string>('knock knock')) {
+          resps2.push(resp);
+        }
 
-      const resps2 = [];
-      for await (const resp of await clientConnection.request<string>('knock knock')) {
-        resps2.push(resp);
-      }
-
-      expect(resps2).toEqual(["who's", 'there', '?']);
-    });
-
-    it('should handle a single returned response with an iterator', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
-
-      serverConnection.onReceive<string>(async message => {
-        return `you said ${message}`;
+        expect(resps2).toEqual(["who's", 'there', '?']);
       });
 
-      const resps1 = [];
-      for await (const resp of await clientConnection.request<string>('hello')) {
-        resps1.push(resp);
-      }
+      it('should handle a single returned response with an iterator', async () => {
+        serverConnection.onReceive<string>(async message => {
+          return `you said ${message}`;
+        });
 
-      expect(resps1).toEqual(['you said hello']);
+        const resps1 = [];
+        for await (const resp of await clientConnection.request<string>('hello')) {
+          resps1.push(resp);
+        }
+
+        expect(resps1).toEqual(['you said hello']);
+      });
     });
 
-    it('should handle a single returned response', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
+    describe('requests with a single response', () => {
+      it('should handle a single returned response', async () => {
+        serverConnection.onReceive<string>(async message => {
+          return `you said ${message}`;
+        });
 
-      serverConnection.onReceive<string>(async message => {
-        return `you said ${message}`;
+        const resp = await clientConnection.requestOne<string>('hello');
+
+        expect(resp).toEqual('you said hello');
       });
 
-      const resp = await clientConnection.requestOne<string>('hello');
+      it('should return the first response if multiple are provided', async () => {
+        serverConnection.onReceive<string>(message =>
+          (async function*() {
+            yield 'hey';
+            yield 'there';
+            yield message;
+          })(),
+        );
 
-      expect(resp).toEqual('you said hello');
+        const resp = await clientConnection.requestOne<string>('hello');
+
+        expect(resp).toEqual('hey');
+      });
     });
 
-    it('should return the first response if multiple are provided', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
+    describe('one-way send (push)', () => {
+      it('should handle pushes in both directions', async () => {
+        const serverReceive = jest.fn();
+        const clientReceive = jest.fn();
 
-      serverConnection.onReceive<string>(message =>
-        (async function*() {
-          yield 'hey';
-          yield 'there';
-          yield message;
-        })(),
-      );
+        serverConnection.onReceive<string>(async message => {
+          serverReceive(message);
+        });
 
-      const resp = await clientConnection.requestOne<string>('hello');
+        clientConnection.onReceive<string>(async message => {
+          clientReceive(message);
+        });
 
-      expect(resp).toEqual('hey');
+        await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
+
+        expect(serverReceive).toHaveBeenCalledWith('one way');
+        expect(clientReceive).toHaveBeenCalledWith('or another');
+      });
     });
 
-    it('should handle errors', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
+    describe('handling errors', () => {
+      it('should handle internal errors', async () => {
+        serverConnection.onReceive<string>(async message => {
+          throw new Error(`Error: ${message}`);
+        });
 
-      serverConnection.onReceive<string>(async message => {
-        throw new Error(`Error: ${message}`);
+        try {
+          await clientConnection.requestOne<string>('hello');
+          fail('Should have thrown');
+        } catch (err) {
+          expect(err).toBeInstanceOf(Error);
+          expect(err.message).toEqual('Error: hello');
+        }
       });
 
-      try {
-        await clientConnection.requestOne<string>('hello');
-        fail('Should have thrown');
-      } catch (err) {
-        expect(err).toBeInstanceOf(Error);
-        expect(err.message).toEqual('Error: hello');
-      }
-    });
+      it('should handle anomalies', async () => {
+        serverConnection.onReceive<string>(async message => {
+          throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
+        });
 
-    it('should handle anomalies', async () => {
-      const serverTransport = new DirectTransport();
-      const clientTransport = serverTransport.getConnectedTransport();
-      const clientConnection = new MessageConnection(clientTransport);
-      const serverConnection = new MessageConnection(serverTransport);
-
-      serverConnection.onReceive<string>(async message => {
-        throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
+        try {
+          await clientConnection.requestOne<string>('hello');
+          fail('Should have thrown');
+        } catch (err) {
+          expect(err).toBeInstanceOf(Anomaly);
+          expect(err.message).toEqual('Anomaly: hello');
+          expect(err.info).toEqual({ foo: 'bar' });
+        }
       });
-
-      try {
-        await clientConnection.requestOne<string>('hello');
-        fail('Should have thrown');
-      } catch (err) {
-        expect(err).toBeInstanceOf(Anomaly);
-        expect(err.message).toEqual('Anomaly: hello');
-        expect(err.info).toEqual({ foo: 'bar' });
-      }
     });
   });
 });

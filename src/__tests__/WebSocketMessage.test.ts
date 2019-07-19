@@ -7,7 +7,7 @@ describe('MessageConnection', () => {
     it('should handle multiple responses with an iterator', async () => {
       const httpServer = http.createServer();
       await new Promise(resolve => {
-        httpServer.listen({ port: 55556 }, resolve);
+        httpServer.listen({ port: 55555 }, resolve);
       });
 
       const wsms = new WebSocketMessageServer<string>({
@@ -22,7 +22,7 @@ describe('MessageConnection', () => {
           })(),
       });
 
-      const clientConnection = await WebSocketMessageClient.create('ws://localhost:55556');
+      const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555');
 
       const resps1 = [];
       for await (const resp of await clientConnection.request<string>('knock knock')) {
@@ -48,7 +48,7 @@ describe('MessageConnection', () => {
     it('should close the socket if the wrong path is specified', async () => {
       const httpServer = http.createServer();
       await new Promise(resolve => {
-        httpServer.listen({ port: 55556 }, resolve);
+        httpServer.listen({ port: 55555 }, resolve);
       });
 
       const wsms = new WebSocketMessageServer<string>({
@@ -64,7 +64,7 @@ describe('MessageConnection', () => {
         path: '/the-path',
       });
 
-      const clientConnection = await WebSocketMessageClient.create('ws://localhost:55556/the-wrong-path');
+      const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555/the-wrong-path');
 
       await new Promise(resolve => {
         clientConnection.onClose = resolve;

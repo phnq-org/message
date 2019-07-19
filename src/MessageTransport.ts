@@ -1,5 +1,5 @@
 export enum MessageType {
-  Request = 'request',
+  Send = 'send',
   Response = 'response',
   Error = 'error',
   Anomaly = 'anomaly',

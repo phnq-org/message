@@ -7,6 +7,12 @@ import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
 
+interface IConfig<R> {
+  httpServer: http.Server;
+  onReceive: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<IValue> | Promise<IValue | undefined>;
+  path?: string;
+}
+
 export class WebSocketMessageServer<R> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
@@ -16,15 +22,7 @@ export class WebSocketMessageServer<R> {
   ) => AsyncIterableIterator<IValue> | Promise<IValue | undefined>;
   private connections = new Map<ConnectionId, MessageConnection>();
 
-  constructor({
-    httpServer,
-    onReceive,
-    path = '/',
-  }: {
-    httpServer: http.Server;
-    onReceive: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<IValue> | Promise<IValue | undefined>;
-    path?: string;
-  }) {
+  constructor({ httpServer, onReceive, path = '/' }: IConfig<R>) {
     this.httpServer = httpServer;
     this.receiveHandler = onReceive;
     this.wss = new WebSocket.Server({ server: httpServer });

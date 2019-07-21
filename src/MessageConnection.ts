@@ -111,7 +111,7 @@ export class MessageConnection {
           : result;
 
       for await (const resp of respIter) {
-        this.transport.send({ id: message.id, type: MessageType.Response, data: resp });
+        this.transport.send({ data: resp, id: message.id, type: MessageType.Response });
       }
     } catch (err) {
       if (err instanceof Anomaly) {

@@ -29,8 +29,5 @@ export interface IErrorMessage extends IMessage {
 
 export interface IMessageTransport {
   send(message: IMessage): Promise<void>;
-  onReceive(receive: (message: IMessage) => void): Promise<void>;
+  onReceive(receive: (message: IMessage) => void): void;
 }
-
-// implementations:
-// WS Client, WS Server, Kafka Provider, Kafka Consumer

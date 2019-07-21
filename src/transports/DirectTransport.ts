@@ -15,7 +15,7 @@ export class DirectTransport implements IMessageTransport {
     this.connectedTransport.handleReceive(message);
   }
 
-  public async onReceive(receive: (message: IMessage) => void) {
+  public onReceive(receive: (message: IMessage) => void) {
     this.receive = receive;
   }
 

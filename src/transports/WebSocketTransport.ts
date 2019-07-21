@@ -13,7 +13,7 @@ export class WebSocketTransport implements IMessageTransport {
     this.socket.send(serialize(message));
   }
 
-  public async onReceive(receive: (message: IMessage) => void) {
+  public onReceive(receive: (message: IMessage) => void) {
     this.socket.on('message', (message: string) => {
       receive(deserialize(message));
     });

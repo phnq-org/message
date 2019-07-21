@@ -2,7 +2,7 @@ import { Client } from 'ts-nats';
 import { IMessage, IMessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-type SubjectResolver = (message: IMessage) => string;
+type SubjectResolver = (data: any) => string;
 
 interface INATSTransportOptions {
   subscriptions: string[];
@@ -27,7 +27,7 @@ export class NATSTransport implements IMessageTransport {
 
   public async send(message: IMessage): Promise<void> {
     const publishSubject = this.options.publishSubject;
-    const subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
+    const subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message.data);
     await this.nc.publish(subject, serialize(message));
   }
   public onReceive(receiveHandler: (message: IMessage) => void): void {

@@ -1,4 +1,5 @@
-import { Anomaly, DirectTransport, MessageConnection } from '../index.client';
+import { Anomaly, MessageConnection } from '../index.client';
+import { DirectTransport } from '../transports/DirectTransport';
 
 const serverTransport = new DirectTransport();
 const serverConnection = new MessageConnection(serverTransport);

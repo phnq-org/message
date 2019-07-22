@@ -1,5 +1,5 @@
 import { Client } from 'ts-nats';
-import { IMessage, IMessageTransport } from '../MessageTransport';
+import { IMessage, IMessageTransport, MessageType } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
 type SubjectResolver = (data: any) => string;
@@ -19,6 +19,7 @@ export class NATSTransport implements IMessageTransport {
   private nc: Client;
   private options: INATSTransportOptions;
   private receiveHandler?: (message: IMessage) => void;
+  private subjectById = new Map<number, string>();
 
   private constructor(nc: Client, options: INATSTransportOptions) {
     this.nc = nc;
@@ -27,9 +28,29 @@ export class NATSTransport implements IMessageTransport {
 
   public async send(message: IMessage): Promise<void> {
     const publishSubject = this.options.publishSubject;
-    const subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message.data);
+
+    let subject: string | undefined;
+    if (message.type === MessageType.End) {
+      subject = this.subjectById.get(message.id);
+    } else {
+      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message.data);
+    }
+
+    if (subject === undefined) {
+      throw new Error('Could not get subject');
+    }
+
+    if (message.type === MessageType.End) {
+      this.subjectById.delete(message.id);
+    } else {
+      this.subjectById.set(message.id, subject);
+    }
+
+    // console.log('SEND', serialize(message));
+
     await this.nc.publish(subject, serialize(message));
   }
+
   public onReceive(receiveHandler: (message: IMessage) => void): void {
     this.receiveHandler = receiveHandler;
   }

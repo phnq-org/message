@@ -2,7 +2,7 @@ import { Client } from 'ts-nats';
 import { IMessage, IMessageTransport, MessageType } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-type SubjectResolver = (data: any) => string;
+type SubjectResolver = (message: IMessage) => string;
 
 interface INATSTransportOptions {
   subscriptions: string[];
@@ -33,7 +33,7 @@ export class NATSTransport implements IMessageTransport {
     if (message.type === MessageType.End) {
       subject = this.subjectById.get(message.id);
     } else {
-      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message.data);
+      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
     }
 
     if (subject === undefined) {

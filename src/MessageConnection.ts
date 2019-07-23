@@ -116,13 +116,13 @@ export class MessageConnection {
     } catch (err) {
       if (err instanceof Anomaly) {
         this.transport.send({
-          data: { message: err.message, info: err.info },
+          data: { message: err.message, info: err.info, requestData: message.data },
           id: message.id,
           type: MessageType.Anomaly,
         });
       } else if (err instanceof Error) {
         this.transport.send({
-          data: { message: err.message },
+          data: { message: err.message, requestData: message.data },
           id: message.id,
           type: MessageType.Error,
         });

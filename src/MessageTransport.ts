@@ -17,6 +17,7 @@ export interface IAnomalyMessage extends IMessage {
   data: {
     message: string;
     info: any;
+    requestData: any;
   };
 }
 
@@ -24,6 +25,7 @@ export interface IErrorMessage extends IMessage {
   type: MessageType.Error;
   data: {
     message: string;
+    requestData: any;
   };
 }
 

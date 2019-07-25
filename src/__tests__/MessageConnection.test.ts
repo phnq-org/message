@@ -125,4 +125,27 @@ describe('MessageConnection', () => {
       });
     });
   });
+
+  describe('requests with timeouts', () => {
+    it('should throw an error if the response times out', async () => {
+      clientConnection.responseTimeout = 50;
+
+      serverConnection.onReceive<string>(async message => {
+        await wait(100);
+        return `you said ${message}`;
+      });
+
+      try {
+        await clientConnection.requestOne<string>('hello');
+        fail('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+      }
+    });
+  });
 });
+
+const wait = (millis: number = 0) =>
+  new Promise(resolve => {
+    setTimeout(resolve, millis);
+  });

@@ -18,7 +18,10 @@ export interface IData {
   [key: string]: IValue | IValue[];
 }
 
+const DEFAULT_RESPONSE_TIMEOUT = 5000;
+
 export class MessageConnection {
+  public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private transport: IMessageTransport;
   private responseQueues = new Map<number, AsyncQueue<IMessage>>();
   private receiveHandler?: (message: any) => AsyncIterableIterator<IValue> | Promise<IValue | void>;
@@ -72,6 +75,7 @@ export class MessageConnection {
     const id = idIterator.next().value;
 
     const responseQueue = new AsyncQueue<IMessage>();
+    responseQueue.maxWaitTime = this.responseTimeout;
     this.responseQueues.set(id, responseQueue);
 
     await this.transport.send({ type: MessageType.Send, id, data });

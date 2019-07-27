@@ -7,7 +7,7 @@ export class WebSocketMessageClient extends MessageConnection {
     return new WebSocketMessageClient(
       await new Promise<WebSocket>(resolve => {
         const s = new WebSocket(url);
-        s.on('open', () => {
+        s.addEventListener('open', () => {
           resolve(s);
         });
       }),
@@ -22,7 +22,7 @@ export class WebSocketMessageClient extends MessageConnection {
     super(new WebSocketTransport(s));
     this.socket = s;
 
-    s.on('close', () => {
+    s.addEventListener('close', () => {
       if (this.onClose) {
         this.onClose();
       }

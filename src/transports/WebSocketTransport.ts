@@ -14,8 +14,8 @@ export class WebSocketTransport implements IMessageTransport {
   }
 
   public onReceive(receive: (message: IMessage) => void) {
-    this.socket.on('message', (message: string) => {
-      receive(deserialize(message));
+    this.socket.addEventListener('message', event => {
+      receive(deserialize(event.data));
     });
   }
 }

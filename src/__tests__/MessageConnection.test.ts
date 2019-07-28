@@ -177,6 +177,48 @@ describe('MessageConnection', () => {
       }
     });
   });
+
+  describe('Response mappers', () => {
+    const serverTransportMapper = new DirectTransport();
+    const serverConnectionMapper = new MessageConnection(serverTransportMapper);
+    const clientConnectionMapper = new MessageConnection(serverTransportMapper.getConnectedTransport());
+
+    serverConnectionMapper.addResponseMapper((req, resp) => {
+      return { wrapped: resp, req };
+    });
+
+    it('should handle multiple responses with an async iterator', async () => {
+      serverConnectionMapper.onReceive<string>(message =>
+        (async function*() {
+          expect(message).toBe('knock knock');
+
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })(),
+      );
+
+      const resps1 = [];
+      for await (const resp of await clientConnectionMapper.request<string>('knock knock')) {
+        resps1.push(resp);
+      }
+
+      expect(resps1).toEqual([
+        { wrapped: "who's", req: 'knock knock' },
+        { wrapped: 'there', req: 'knock knock' },
+        { wrapped: '?', req: 'knock knock' },
+      ]);
+    });
+
+    it('should handle a single returned response with a single value', async () => {
+      serverConnectionMapper.onReceive<string>(async message => {
+        return `you said ${message}`;
+      });
+
+      const resp = await clientConnectionMapper.request<string>('hello');
+      expect(resp).toEqual({ wrapped: 'you said hello', req: 'hello' });
+    });
+  });
 });
 
 const wait = (millis: number = 0) =>

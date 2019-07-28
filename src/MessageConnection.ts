@@ -18,6 +18,8 @@ export interface IData {
   [key: string]: IValue | IValue[];
 }
 
+type ResponseMapper = (requestData: any, responseData: any) => any;
+
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
 export class MessageConnection {
@@ -25,6 +27,7 @@ export class MessageConnection {
   private transport: IMessageTransport;
   private responseQueues = new Map<number, AsyncQueue<IMessage>>();
   private receiveHandler?: (message: any) => AsyncIterableIterator<IValue> | Promise<IValue | void>;
+  private responseMappers: ResponseMapper[] = [];
 
   constructor(transport: IMessageTransport) {
     this.transport = transport;
@@ -125,33 +128,54 @@ export class MessageConnection {
     this.receiveHandler = receiveHandler;
   }
 
+  public addResponseMapper(mapper: ResponseMapper) {
+    this.responseMappers.push(mapper);
+  }
+
+  private mapResponse(requestData: any, responseData: any): any {
+    let data = responseData;
+    this.responseMappers.forEach(mapper => {
+      data = mapper(requestData, data);
+    });
+    return data;
+  }
+
   private async handleReceive(message: IMessage) {
     if (!this.receiveHandler) {
       throw new Error('No receive handler set.');
     }
 
+    const requestData = message.data;
     try {
       const result = this.receiveHandler(message.data);
       if (result instanceof Promise) {
-        this.transport.send({ data: await result, id: message.id, type: MessageType.Response });
+        this.transport.send({
+          data: this.mapResponse(requestData, await result),
+          id: message.id,
+          type: MessageType.Response,
+        });
         return;
       }
 
       for await (const resp of result) {
-        this.transport.send({ data: resp, id: message.id, type: MessageType.Multi });
+        this.transport.send({
+          data: this.mapResponse(requestData, await resp),
+          id: message.id,
+          type: MessageType.Multi,
+        });
       }
 
       this.transport.send({ id: message.id, type: MessageType.End, data: {} });
     } catch (err) {
       if (err instanceof Anomaly) {
         this.transport.send({
-          data: { message: err.message, info: err.info, requestData: message.data },
+          data: { message: err.message, info: err.info, requestData },
           id: message.id,
           type: MessageType.Anomaly,
         });
       } else if (err instanceof Error) {
         this.transport.send({
-          data: { message: err.message, requestData: message.data },
+          data: { message: err.message, requestData },
           id: message.id,
           type: MessageType.Error,
         });

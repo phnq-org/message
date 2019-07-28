@@ -1,8 +1,9 @@
 export enum MessageType {
   Send = 'send',
-  Response = 'response',
   Error = 'error',
   Anomaly = 'anomaly',
+  Response = 'response',
+  Multi = 'multi',
   End = 'end',
 }
 

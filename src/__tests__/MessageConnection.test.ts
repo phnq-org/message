@@ -34,21 +34,17 @@ describe('MessageConnection', () => {
         expect(resps2).toEqual(["who's", 'there', '?']);
       });
 
-      it('should handle a single returned response with an iterator', async () => {
+      it('should handle a single returned response with a single value', async () => {
         serverConnection.onReceive<string>(async message => {
           return `you said ${message}`;
         });
 
-        const resps1 = [];
-        for await (const resp of await clientConnection.request<string>('hello')) {
-          resps1.push(resp);
-        }
-
-        expect(resps1).toEqual(['you said hello']);
+        const resp = await clientConnection.request<string>('hello');
+        expect(resp).toEqual('you said hello');
       });
     });
 
-    describe('requests with a single response', () => {
+    describe('requestOne', () => {
       it('should handle a single returned response', async () => {
         serverConnection.onReceive<string>(async message => {
           return `you said ${message}`;
@@ -71,6 +67,44 @@ describe('MessageConnection', () => {
         const resp = await clientConnection.requestOne<string>('hello');
 
         expect(resp).toEqual('hey');
+      });
+    });
+
+    describe('requestMulti', () => {
+      it('should return an iterator when a single response is provided', async () => {
+        serverConnection.onReceive<string>(async message => {
+          return `you said ${message}`;
+        });
+
+        const resp = await clientConnection.requestMulti<string>('hello');
+        expect(typeof resp).toBe('object');
+        expect(typeof resp[Symbol.asyncIterator]).toBe('function');
+
+        const resps = [];
+        for await (const r of resp) {
+          resps.push(r);
+        }
+        expect(resps).toEqual(['you said hello']);
+      });
+
+      it('should return an iterator when multiple responses are provided', async () => {
+        serverConnection.onReceive<string>(message =>
+          (async function*() {
+            yield 'hey';
+            yield 'there';
+            yield message;
+          })(),
+        );
+
+        const resp = await clientConnection.requestMulti<string>('hello');
+        expect(typeof resp).toBe('object');
+        expect(typeof resp[Symbol.asyncIterator]).toBe('function');
+
+        const resps = [];
+        for await (const r of resp) {
+          resps.push(r);
+        }
+        expect(resps).toEqual(['hey', 'there', 'hello']);
       });
     });
 

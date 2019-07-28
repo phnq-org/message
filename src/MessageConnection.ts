@@ -41,6 +41,13 @@ export class MessageConnection {
         case MessageType.Error:
           if (responseQueue) {
             responseQueue.enqueue(message);
+            responseQueue.flush();
+          }
+          break;
+
+        case MessageType.Multi:
+          if (responseQueue) {
+            responseQueue.enqueue(message);
           }
           break;
 
@@ -58,20 +65,37 @@ export class MessageConnection {
   }
 
   public async requestOne<R = any>(data: any): Promise<R> {
-    const resps: R[] = [];
+    const resp = await this.request(data);
 
-    for await (const resp of await this.request(data)) {
-      resps.push(resp);
+    if (typeof resp === 'object' && resp[Symbol.asyncIterator]) {
+      const resps: R[] = [];
+
+      for await (const r of await resp) {
+        resps.push(r);
+      }
+
+      if (resps.length > 1) {
+        log('requestOne: multiple responses were returned -- all but the first were discarded');
+      }
+
+      return resps[0];
+    } else {
+      return resp;
     }
-
-    if (resps.length > 1) {
-      log('requestOne: multiple responses were returned -- all but the first were discarded');
-    }
-
-    return resps[0];
   }
 
-  public async request<R = any>(data: any): Promise<AsyncIterableIterator<R>> {
+  public async requestMulti<R = any>(data: any): Promise<AsyncIterableIterator<R>> {
+    const resp = await this.request(data);
+    if (typeof resp === 'object' && resp[Symbol.asyncIterator]) {
+      return resp;
+    } else {
+      return (async function*() {
+        yield resp;
+      })();
+    }
+  }
+
+  public async request<R = any>(data: any): Promise<AsyncIterableIterator<R> | R> {
     const id = idIterator.next().value;
 
     const responseQueue = new AsyncQueue<IMessage>();
@@ -80,19 +104,21 @@ export class MessageConnection {
 
     await this.transport.send({ type: MessageType.Send, id, data });
 
-    return (async function*() {
-      for await (const message of responseQueue.iterator()) {
-        switch (message.type) {
-          case MessageType.Anomaly:
-            const anomalyMessage = message as IAnomalyMessage;
-            throw new Anomaly(anomalyMessage.data.message, anomalyMessage.data.info);
+    const iter = responseQueue.iterator();
+    const firstMsg = (await iter.next()).value;
 
-          case MessageType.Error:
-            throw new Error((message as IErrorMessage).data.message);
+    if (firstMsg.type === MessageType.Multi) {
+      return (async function*() {
+        yield firstMsg.data;
+        for await (const message of responseQueue.iterator()) {
+          possiblyThrow(message);
+          yield message.data;
         }
-        yield message.data;
-      }
-    })();
+      })();
+    } else {
+      possiblyThrow(firstMsg);
+      return firstMsg.data;
+    }
   }
 
   public onReceive<R>(receiveHandler: (message: R) => AsyncIterableIterator<IValue> | Promise<IValue | void>) {
@@ -106,17 +132,16 @@ export class MessageConnection {
 
     try {
       const result = this.receiveHandler(message.data);
-
-      const respIter =
-        result instanceof Promise
-          ? (async function*() {
-              yield await result;
-            })()
-          : result;
-
-      for await (const resp of respIter) {
-        this.transport.send({ data: resp, id: message.id, type: MessageType.Response });
+      if (result instanceof Promise) {
+        this.transport.send({ data: await result, id: message.id, type: MessageType.Response });
+        return;
       }
+
+      for await (const resp of result) {
+        this.transport.send({ data: resp, id: message.id, type: MessageType.Multi });
+      }
+
+      this.transport.send({ id: message.id, type: MessageType.End, data: {} });
     } catch (err) {
       if (err instanceof Anomaly) {
         this.transport.send({
@@ -134,6 +159,16 @@ export class MessageConnection {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
       }
     }
-    this.transport.send({ id: message.id, type: MessageType.End, data: {} });
   }
 }
+
+const possiblyThrow = (message: IMessage) => {
+  switch (message.type) {
+    case MessageType.Anomaly:
+      const anomalyMessage = message as IAnomalyMessage;
+      throw new Anomaly(anomalyMessage.data.message, anomalyMessage.data.info);
+
+    case MessageType.Error:
+      throw new Error((message as IErrorMessage).data.message);
+  }
+};

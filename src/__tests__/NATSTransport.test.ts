@@ -55,7 +55,7 @@ describe('NATSTransport', () => {
       });
 
       const resps1 = [];
-      for await (const resp of await clientConnection.request<string>('hello')) {
+      for await (const resp of await clientConnection.requestMulti<string>('hello')) {
         resps1.push(resp);
       }
 

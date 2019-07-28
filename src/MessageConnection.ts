@@ -18,7 +18,7 @@ export interface IData {
   [key: string]: IValue | IValue[];
 }
 
-type ResponseMapper = (requestData: any, responseData: any) => any;
+export type ResponseMapper = (requestData: any, responseData: any) => any;
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 

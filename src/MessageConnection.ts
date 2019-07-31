@@ -1,8 +1,8 @@
 import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
+import hrtime from 'browser-process-hrtime';
 import { Anomaly } from './errors';
 import { IAnomalyMessage, IErrorMessage, IMessage, IMessageTransport, MessageType } from './MessageTransport';
-
 const log = createLogger('MessageConnection');
 
 const idIterator = (function*() {
@@ -18,6 +18,17 @@ export interface IData {
   [key: string]: IValue | IValue[];
 }
 
+export enum ConversationPerspective {
+  Requester = 'requester',
+  Responder = 'responder',
+}
+
+export interface IConversationSummary {
+  perspective: ConversationPerspective;
+  request: IMessage;
+  responses: Array<{ message: IMessage; time: [number, number] }>;
+}
+
 export type ResponseMapper = (requestData: any, responseData: any) => any;
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
@@ -28,6 +39,7 @@ export class MessageConnection {
   private responseQueues = new Map<number, AsyncQueue<IMessage>>();
   private receiveHandler?: (message: any) => AsyncIterableIterator<IValue> | Promise<IValue | void>;
   private responseMappers: ResponseMapper[] = [];
+  private conversationHandler?: (c: IConversationSummary) => void;
 
   constructor(transport: IMessageTransport) {
     this.transport = transport;
@@ -42,6 +54,7 @@ export class MessageConnection {
         case MessageType.Response:
         case MessageType.Anomaly:
         case MessageType.Error:
+        case MessageType.End:
           if (responseQueue) {
             responseQueue.enqueue(message);
             responseQueue.flush();
@@ -53,18 +66,17 @@ export class MessageConnection {
             responseQueue.enqueue(message);
           }
           break;
-
-        case MessageType.End:
-          if (responseQueue) {
-            responseQueue.flush();
-          }
-          break;
       }
     });
   }
 
+  /**
+   * Note: this will yield a response of undefined even if the handler
+   * returns nothing. The caller can ignore the response for a "fire and forget"
+   * interaction.
+   */
   public async send(data: any): Promise<void> {
-    await this.requestOne<void>(data);
+    return this.requestOne<void>(data);
   }
 
   public async requestOne<R = any>(data: any): Promise<R> {
@@ -101,24 +113,45 @@ export class MessageConnection {
   public async request<R = any>(data: any): Promise<AsyncIterableIterator<R> | R> {
     const id = idIterator.next().value;
 
+    const requestMessage = { type: MessageType.Send, id, data };
+
+    const conversation: IConversationSummary = {
+      perspective: ConversationPerspective.Requester,
+      request: requestMessage,
+      responses: [],
+    };
+    const start = hrtime();
+
     const responseQueue = new AsyncQueue<IMessage>();
     responseQueue.maxWaitTime = this.responseTimeout;
     this.responseQueues.set(id, responseQueue);
 
-    await this.transport.send({ type: MessageType.Send, id, data });
+    await this.transport.send(requestMessage);
 
     const iter = responseQueue.iterator();
     const firstMsg = (await iter.next()).value;
+    conversation.responses.push({ message: firstMsg, time: hrtime(start) });
+
+    const conversationHandler = this.conversationHandler;
 
     if (firstMsg.type === MessageType.Multi) {
       return (async function*() {
         yield firstMsg.data;
         for await (const message of responseQueue.iterator()) {
+          conversation.responses.push({ message, time: hrtime(start) });
           possiblyThrow(message);
-          yield message.data;
+          if (message.type === MessageType.Multi) {
+            yield message.data;
+          }
+        }
+        if (conversationHandler) {
+          conversationHandler(conversation);
         }
       })();
     } else {
+      if (conversationHandler) {
+        conversationHandler(conversation);
+      }
       possiblyThrow(firstMsg);
       return firstMsg.data;
     }
@@ -130,6 +163,10 @@ export class MessageConnection {
 
   public addResponseMapper(mapper: ResponseMapper) {
     this.responseMappers.push(mapper);
+  }
+
+  public onConversation(conversationHandler: (c: IConversationSummary) => void) {
+    this.conversationHandler = conversationHandler;
   }
 
   private mapResponse(requestData: any, responseData: any): any {
@@ -145,42 +182,57 @@ export class MessageConnection {
       throw new Error('No receive handler set.');
     }
 
+    const conversation: IConversationSummary = {
+      perspective: ConversationPerspective.Responder,
+      request: message,
+      responses: [],
+    };
+    const start = hrtime();
     const requestData = message.data;
+
+    const send = (m: IMessage) => {
+      this.transport.send(m);
+      conversation.responses.push({ message: m, time: hrtime(start) });
+    };
+
     try {
       const result = this.receiveHandler(message.data);
       if (result instanceof Promise) {
-        this.transport.send({
-          data: this.mapResponse(requestData, await result),
+        const responseData = await result;
+        send({
+          data: this.mapResponse(requestData, responseData),
           id: message.id,
           type: MessageType.Response,
         });
-        return;
+      } else {
+        for await (const responseData of result) {
+          send({
+            data: this.mapResponse(requestData, responseData),
+            id: message.id,
+            type: MessageType.Multi,
+          });
+        }
+        send({ id: message.id, type: MessageType.End, data: {} });
       }
-
-      for await (const resp of result) {
-        this.transport.send({
-          data: this.mapResponse(requestData, await resp),
-          id: message.id,
-          type: MessageType.Multi,
-        });
-      }
-
-      this.transport.send({ id: message.id, type: MessageType.End, data: {} });
     } catch (err) {
       if (err instanceof Anomaly) {
-        this.transport.send({
+        send({
           data: { message: err.message, info: err.info, requestData },
           id: message.id,
           type: MessageType.Anomaly,
         });
       } else if (err instanceof Error) {
-        this.transport.send({
+        send({
           data: { message: err.message, requestData },
           id: message.id,
           type: MessageType.Error,
         });
       } else {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
+      }
+    } finally {
+      if (this.conversationHandler) {
+        this.conversationHandler(conversation);
       }
     }
   }

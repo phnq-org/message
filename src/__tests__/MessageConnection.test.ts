@@ -1,4 +1,6 @@
 import { Anomaly, MessageConnection } from '../index.client';
+import { ConversationPerspective, IConversationSummary } from '../MessageConnection';
+import { MessageType } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
 const serverTransport = new DirectTransport();
@@ -179,16 +181,16 @@ describe('MessageConnection', () => {
   });
 
   describe('Response mappers', () => {
-    const serverTransportMapper = new DirectTransport();
-    const serverConnectionMapper = new MessageConnection(serverTransportMapper);
-    const clientConnectionMapper = new MessageConnection(serverTransportMapper.getConnectedTransport());
+    const serverTrans = new DirectTransport();
+    const serverConn = new MessageConnection(serverTrans);
+    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
 
-    serverConnectionMapper.addResponseMapper((req, resp) => {
+    serverConn.addResponseMapper((req, resp) => {
       return { wrapped: resp, req };
     });
 
     it('should handle multiple responses with an async iterator', async () => {
-      serverConnectionMapper.onReceive<string>(message =>
+      serverConn.onReceive<string>(message =>
         (async function*() {
           expect(message).toBe('knock knock');
 
@@ -198,12 +200,12 @@ describe('MessageConnection', () => {
         })(),
       );
 
-      const resps1 = [];
-      for await (const resp of await clientConnectionMapper.request<string>('knock knock')) {
-        resps1.push(resp);
+      const resps = [];
+      for await (const resp of await clientConn.request<string>('knock knock')) {
+        resps.push(resp);
       }
 
-      expect(resps1).toEqual([
+      expect(resps).toEqual([
         { wrapped: "who's", req: 'knock knock' },
         { wrapped: 'there', req: 'knock knock' },
         { wrapped: '?', req: 'knock knock' },
@@ -211,12 +213,64 @@ describe('MessageConnection', () => {
     });
 
     it('should handle a single returned response with a single value', async () => {
-      serverConnectionMapper.onReceive<string>(async message => {
+      serverConn.onReceive<string>(async message => {
         return `you said ${message}`;
       });
 
-      const resp = await clientConnectionMapper.request<string>('hello');
+      const resp = await clientConn.request<string>('hello');
       expect(resp).toEqual({ wrapped: 'you said hello', req: 'hello' });
+    });
+  });
+
+  describe('Conversation Summaries', () => {
+    const serverTrans = new DirectTransport();
+    const serverConn = new MessageConnection(serverTrans);
+    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
+
+    it('should yield expected summaries that agree client vs. server', async () => {
+      let clientConvSummary: IConversationSummary | undefined;
+      let serverConvSummary: IConversationSummary | undefined;
+
+      serverConn.onConversation(convSummary => {
+        serverConvSummary = convSummary;
+      });
+
+      clientConn.onConversation(convSummary => {
+        clientConvSummary = convSummary;
+      });
+
+      serverConn.onReceive<string>(message =>
+        (async function*() {
+          expect(message).toBe('knock knock');
+
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })(),
+      );
+
+      const resps = [];
+      for await (const resp of await clientConn.request<string>('knock knock')) {
+        resps.push(resp);
+      }
+
+      expect(serverConvSummary).toBeDefined();
+      expect(clientConvSummary).toBeDefined();
+
+      if (serverConvSummary && clientConvSummary) {
+        expect(clientConvSummary.perspective).toBe(ConversationPerspective.Requester);
+        expect(serverConvSummary.perspective).toBe(ConversationPerspective.Responder);
+
+        expect(serverConvSummary.responses.map(({ message }) => message)).toEqual(
+          clientConvSummary.responses.map(({ message }) => message),
+        );
+
+        expect(serverConvSummary.responses.length).toBe(4);
+        expect(serverConvSummary.responses[0].message.type).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[1].message.type).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[2].message.type).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[3].message.type).toBe(MessageType.End);
+      }
     });
   });
 });

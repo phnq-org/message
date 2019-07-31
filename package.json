@@ -48,6 +48,7 @@
     "@phnq/streams": "^1.1.0",
     "@types/uuid": "^3.4.5",
     "@types/ws": "^6.0.1",
+    "browser-process-hrtime": "^1.0.0",
     "isomorphic-ws": "^4.0.1",
     "ts-nats": "^1.2.4",
     "ts-node": "^7.0.1",

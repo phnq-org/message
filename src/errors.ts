@@ -10,7 +10,7 @@ export class Anomaly extends Error {
     },
   ) {
     super(message);
-    this.info = info;
     Object.setPrototypeOf(this, new.target.prototype);
+    this.info = info;
   }
 }

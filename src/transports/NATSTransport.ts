@@ -1,32 +1,32 @@
-import { Client } from 'ts-nats';
-import { IMessage, IMessageTransport, MessageType } from '../MessageTransport';
+import { Client, Subscription } from 'ts-nats';
+import { Message, MessageTransport, MessageType } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-type SubjectResolver = (message: IMessage) => string;
+type SubjectResolver = (message: Message) => string;
 
-interface INATSTransportOptions {
+interface NATSTransportOptions {
   subscriptions: string[];
   publishSubject: string | SubjectResolver;
 }
 
-export class NATSTransport implements IMessageTransport {
-  public static async create(nc: Client, options: INATSTransportOptions): Promise<NATSTransport> {
+export class NATSTransport implements MessageTransport {
+  public static async create(nc: Client, options: NATSTransportOptions): Promise<NATSTransport> {
     const natsTransport = new NATSTransport(nc, options);
     await natsTransport.initialize();
     return natsTransport;
   }
 
   private nc: Client;
-  private options: INATSTransportOptions;
-  private receiveHandler?: (message: IMessage) => void;
+  private options: NATSTransportOptions;
+  private receiveHandler?: (message: Message) => void;
   private subjectById = new Map<number, string>();
 
-  private constructor(nc: Client, options: INATSTransportOptions) {
+  private constructor(nc: Client, options: NATSTransportOptions) {
     this.nc = nc;
     this.options = options;
   }
 
-  public async send(message: IMessage): Promise<void> {
+  public async send(message: Message): Promise<void> {
     const publishSubject = this.options.publishSubject;
 
     let subject: string | undefined;
@@ -46,24 +46,23 @@ export class NATSTransport implements IMessageTransport {
       this.subjectById.set(message.id, subject);
     }
 
-    // console.log('SEND', serialize(message));
-
     await this.nc.publish(subject, serialize(message));
   }
 
-  public onReceive(receiveHandler: (message: IMessage) => void): void {
+  public onReceive(receiveHandler: (message: Message) => void): void {
     this.receiveHandler = receiveHandler;
   }
 
-  private async initialize() {
+  private async initialize(): Promise<void> {
     await Promise.all(
-      this.options.subscriptions.map(subject =>
-        this.nc.subscribe(subject, (_, msg) => {
-          if (this.receiveHandler) {
-            this.receiveHandler(deserialize(msg.data));
-          }
-        }),
-      ),
+      this.options.subscriptions.map(
+        (subject): Promise<Subscription> =>
+          this.nc.subscribe(subject, (_, msg): void => {
+            if (this.receiveHandler) {
+              this.receiveHandler(deserialize(msg.data));
+            }
+          })
+      )
     );
   }
 }

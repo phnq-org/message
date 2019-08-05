@@ -1,14 +1,10 @@
-export class Anomaly extends Error {
-  public info?: {
-    [key: string]: string | number | boolean;
-  };
+import { Value } from './MessageConnection';
 
-  constructor(
-    message: string,
-    info?: {
-      [key: string]: string | number | boolean;
-    },
-  ) {
+export class Anomaly extends Error {
+  public isAnomaly = true;
+  public info?: Value;
+
+  public constructor(message: string, info?: Value) {
     super(message);
     Object.setPrototypeOf(this, Anomaly.prototype);
     this.info = info;

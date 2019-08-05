@@ -1,36 +1,38 @@
+import { Value } from './MessageConnection';
+
 export enum MessageType {
   Send = 'send',
   Error = 'error',
   Anomaly = 'anomaly',
   Response = 'response',
   Multi = 'multi',
-  End = 'end',
+  End = 'end'
 }
 
-export interface IMessage {
+export interface Message {
   id: number;
   type: MessageType;
-  data: any;
+  data: Value;
 }
 
-export interface IAnomalyMessage extends IMessage {
+export interface AnomalyMessage extends Message {
   type: MessageType.Anomaly;
   data: {
     message: string;
-    info: any;
-    requestData: any;
+    info: Value;
+    requestData: Value;
   };
 }
 
-export interface IErrorMessage extends IMessage {
+export interface ErrorMessage extends Message {
   type: MessageType.Error;
   data: {
     message: string;
-    requestData: any;
+    requestData: Value;
   };
 }
 
-export interface IMessageTransport {
-  send(message: IMessage): Promise<void>;
-  onReceive(receive: (message: IMessage) => void): void;
+export interface MessageTransport {
+  send(message: Message): Promise<void>;
+  onReceive(receive: (message: Message) => void): void;
 }

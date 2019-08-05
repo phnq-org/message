@@ -1,20 +1,20 @@
 import WebSocket from 'isomorphic-ws';
-import { IMessage, IMessageTransport } from '../MessageTransport';
+import { Message, MessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-export class WebSocketTransport implements IMessageTransport {
+export class WebSocketTransport implements MessageTransport {
   private socket: WebSocket;
 
-  constructor(socket: WebSocket) {
+  public constructor(socket: WebSocket) {
     this.socket = socket;
   }
 
-  public async send(message: IMessage) {
+  public async send(message: Message): Promise<void> {
     this.socket.send(serialize(message));
   }
 
-  public onReceive(receive: (message: IMessage) => void) {
-    this.socket.addEventListener('message', event => {
+  public onReceive(receive: (message: Message) => void): void {
+    this.socket.addEventListener('message', (event): void => {
       receive(deserialize(event.data));
     });
   }

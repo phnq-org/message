@@ -1,41 +1,41 @@
 import http from 'http';
-import { IValue, WebSocketMessageClient } from '../index.client';
+import { Value, WebSocketMessageClient } from '../index.client';
 import { WebSocketMessageServer } from '../index.server';
 import { MessageConnection } from '../MessageConnection';
 import { ConnectionId } from '../WebSocketMessageServer';
 
-describe('MessageConnection', () => {
-  describe('with WebSocketTransport', () => {
-    it('should handle multiple responses with an iterator', async () => {
+describe('MessageConnection', (): void => {
+  describe('with WebSocketTransport', (): void => {
+    it('should handle multiple responses with an iterator', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise(resolve => {
+      await new Promise((resolve): void => {
         httpServer.listen({ port: 55555 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer<string>({
+      const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: (connectionId: ConnectionId, message: string): AsyncIterableIterator<IValue> | Promise<IValue> =>
-          (async function*() {
+        onReceive: (connectionId: ConnectionId, message: Value): AsyncIterableIterator<Value> =>
+          (async function*(): AsyncIterableIterator<Value> {
             expect(message).toBe('knock knock');
             expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
 
             yield "who's";
             yield 'there';
             yield '?';
-          })(),
+          })()
       });
 
       const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555');
 
       const resps1 = [];
-      for await (const resp of await clientConnection.request<string>('knock knock')) {
+      for await (const resp of await clientConnection.requestMulti('knock knock')) {
         resps1.push(resp);
       }
 
       expect(resps1).toEqual(["who's", 'there', '?']);
 
       const resps2 = [];
-      for await (const resp of await clientConnection.request<string>('knock knock')) {
+      for await (const resp of await clientConnection.requestMulti('knock knock')) {
         resps2.push(resp);
       }
 
@@ -43,33 +43,33 @@ describe('MessageConnection', () => {
 
       await wsms.close();
 
-      await new Promise(resolve => {
+      await new Promise((resolve): void => {
         httpServer.close(resolve);
       });
     });
 
-    it('should close the socket if the wrong path is specified', async () => {
+    it('should close the socket if the wrong path is specified', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise(resolve => {
+      await new Promise((resolve): void => {
         httpServer.listen({ port: 55555 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer<string>({
+      const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: (message: string): AsyncIterableIterator<IValue> | Promise<IValue> =>
-          (async function*() {
+        onReceive: (message: string): AsyncIterableIterator<string> =>
+          (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 
             yield "who's";
             yield 'there';
             yield '?';
           })(),
-        path: '/the-path',
+        path: '/the-path'
       });
 
       const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555/the-wrong-path');
 
-      await new Promise(resolve => {
+      await new Promise((resolve): void => {
         clientConnection.onClose = resolve;
       });
 
@@ -77,7 +77,7 @@ describe('MessageConnection', () => {
 
       await wsms.close();
 
-      await new Promise(resolve => {
+      await new Promise((resolve): void => {
         httpServer.close(resolve);
       });
     });

@@ -2,49 +2,60 @@ import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
 import hrtime from 'browser-process-hrtime';
 import { Anomaly } from './errors';
-import { IAnomalyMessage, IErrorMessage, IMessage, IMessageTransport, MessageType } from './MessageTransport';
+import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
 const log = createLogger('MessageConnection');
 
-const idIterator = (function*() {
+const idIterator = (function*(): IterableIterator<number> {
   let i = 0;
   while (true) {
     yield ++i;
   }
 })();
 
-export type IValue = string | number | boolean | Date | IData | undefined;
+const possiblyThrow = (message: Message): void => {
+  switch (message.type) {
+    case MessageType.Anomaly:
+      const anomalyMessage = message as AnomalyMessage;
+      throw new Anomaly(anomalyMessage.data.message, anomalyMessage.data.info);
 
-export interface IData {
-  [key: string]: IValue | IValue[];
+    case MessageType.Error:
+      throw new Error((message as ErrorMessage).data.message);
+  }
+};
+
+export type Value = string | number | boolean | Date | Data | undefined;
+
+export interface Data {
+  [key: string]: Value | Value[];
 }
 
 export enum ConversationPerspective {
   Requester = 'requester',
-  Responder = 'responder',
+  Responder = 'responder'
 }
 
-export interface IConversationSummary {
+export interface ConversationSummary {
   perspective: ConversationPerspective;
-  request: IMessage;
-  responses: Array<{ message: IMessage; time: [number, number] }>;
+  request: Message;
+  responses: { message: Message; time: [number, number] }[];
 }
 
-export type ResponseMapper = (requestData: any, responseData: any) => any;
+export type ResponseMapper = (requestData: Value, responseData: Value) => Value;
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
 export class MessageConnection {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
-  private transport: IMessageTransport;
-  private responseQueues = new Map<number, AsyncQueue<IMessage>>();
-  private receiveHandler?: (message: any) => AsyncIterableIterator<IValue> | Promise<IValue | void>;
+  private transport: MessageTransport;
+  private responseQueues = new Map<number, AsyncQueue<Message>>();
+  private receiveHandler?: (message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
   private responseMappers: ResponseMapper[] = [];
-  private conversationHandler?: (c: IConversationSummary) => void;
+  private conversationHandler?: (c: ConversationSummary) => void;
 
-  constructor(transport: IMessageTransport) {
+  public constructor(transport: MessageTransport) {
     this.transport = transport;
 
-    transport.onReceive(message => {
+    transport.onReceive((message): void => {
       const responseQueue = this.responseQueues.get(message.id);
       switch (message.type) {
         case MessageType.Send:
@@ -75,17 +86,17 @@ export class MessageConnection {
    * returns nothing. The caller can ignore the response for a "fire and forget"
    * interaction.
    */
-  public async send(data: any): Promise<void> {
-    return this.requestOne<void>(data);
+  public async send(data: Value): Promise<void> {
+    await this.requestOne(data);
   }
 
-  public async requestOne<R = any>(data: any): Promise<R> {
+  public async requestOne(data: Value): Promise<Value> {
     const resp = await this.request(data);
 
-    if (typeof resp === 'object' && resp[Symbol.asyncIterator]) {
-      const resps: R[] = [];
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
+      const resps: Value[] = [];
 
-      for await (const r of await resp) {
+      for await (const r of await (resp as AsyncIterableIterator<Value>)) {
         resps.push(r);
       }
 
@@ -95,34 +106,34 @@ export class MessageConnection {
 
       return resps[0];
     } else {
-      return resp;
+      return resp as Value;
     }
   }
 
-  public async requestMulti<R = any>(data: any): Promise<AsyncIterableIterator<R>> {
+  public async requestMulti(data: Value): Promise<AsyncIterableIterator<Value>> {
     const resp = await this.request(data);
-    if (typeof resp === 'object' && resp[Symbol.asyncIterator]) {
-      return resp;
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
+      return resp as AsyncIterableIterator<Value>;
     } else {
-      return (async function*() {
-        yield resp;
+      return (async function*(): AsyncIterableIterator<Value> {
+        yield resp as Value;
       })();
     }
   }
 
-  public async request<R = any>(data: any): Promise<AsyncIterableIterator<R> | R> {
+  public async request(data: Value): Promise<AsyncIterableIterator<Value> | Value> {
     const id = idIterator.next().value;
 
     const requestMessage = { type: MessageType.Send, id, data };
 
-    const conversation: IConversationSummary = {
+    const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
       request: requestMessage,
-      responses: [],
+      responses: []
     };
     const start = hrtime();
 
-    const responseQueue = new AsyncQueue<IMessage>();
+    const responseQueue = new AsyncQueue<Message>();
     responseQueue.maxWaitTime = this.responseTimeout;
     this.responseQueues.set(id, responseQueue);
 
@@ -135,7 +146,7 @@ export class MessageConnection {
     const conversationHandler = this.conversationHandler;
 
     if (firstMsg.type === MessageType.Multi) {
-      return (async function*() {
+      return (async function*(): AsyncIterableIterator<Value> {
         yield firstMsg.data;
         for await (const message of responseQueue.iterator()) {
           conversation.responses.push({ message, time: hrtime(start) });
@@ -157,40 +168,40 @@ export class MessageConnection {
     }
   }
 
-  public onReceive<R>(receiveHandler: (message: R) => AsyncIterableIterator<IValue> | Promise<IValue | void>) {
+  public onReceive(receiveHandler: (message: Value) => AsyncIterableIterator<Value> | Promise<Value>): void {
     this.receiveHandler = receiveHandler;
   }
 
-  public addResponseMapper(mapper: ResponseMapper) {
+  public addResponseMapper(mapper: ResponseMapper): void {
     this.responseMappers.push(mapper);
   }
 
-  public onConversation(conversationHandler: (c: IConversationSummary) => void) {
+  public onConversation(conversationHandler: (c: ConversationSummary) => void): void {
     this.conversationHandler = conversationHandler;
   }
 
-  private mapResponse(requestData: any, responseData: any): any {
+  private mapResponse(requestData: Value, responseData: Value): Value {
     let data = responseData;
-    this.responseMappers.forEach(mapper => {
+    this.responseMappers.forEach((mapper): void => {
       data = mapper(requestData, data);
     });
     return data;
   }
 
-  private async handleReceive(message: IMessage) {
+  private async handleReceive(message: Message): Promise<void> {
     if (!this.receiveHandler) {
       throw new Error('No receive handler set.');
     }
 
-    const conversation: IConversationSummary = {
+    const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Responder,
       request: message,
-      responses: [],
+      responses: []
     };
     const start = hrtime();
     const requestData = message.data;
 
-    const send = (m: IMessage) => {
+    const send = (m: Message): void => {
       this.transport.send(m);
       conversation.responses.push({ message: m, time: hrtime(start) });
     };
@@ -202,14 +213,14 @@ export class MessageConnection {
         send({
           data: this.mapResponse(requestData, responseData),
           id: message.id,
-          type: MessageType.Response,
+          type: MessageType.Response
         });
       } else {
         for await (const responseData of result) {
           send({
             data: this.mapResponse(requestData, responseData),
             id: message.id,
-            type: MessageType.Multi,
+            type: MessageType.Multi
           });
         }
         send({ id: message.id, type: MessageType.End, data: {} });
@@ -219,13 +230,13 @@ export class MessageConnection {
         send({
           data: { message: err.message, info: err.info, requestData },
           id: message.id,
-          type: MessageType.Anomaly,
+          type: MessageType.Anomaly
         });
       } else if (err instanceof Error) {
         send({
           data: { message: err.message, requestData },
           id: message.id,
-          type: MessageType.Error,
+          type: MessageType.Error
         });
       } else {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
@@ -237,14 +248,3 @@ export class MessageConnection {
     }
   }
 }
-
-const possiblyThrow = (message: IMessage) => {
-  switch (message.type) {
-    case MessageType.Anomaly:
-      const anomalyMessage = message as IAnomalyMessage;
-      throw new Anomaly(anomalyMessage.data.message, anomalyMessage.data.info);
-
-    case MessageType.Error:
-      throw new Error((message as IErrorMessage).data.message);
-  }
-};

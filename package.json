@@ -34,13 +34,16 @@
   "devDependencies": {
     "@types/ip": "^1.1.0",
     "@types/jest": "^24.0.13",
+    "@typescript-eslint/eslint-plugin": "^1.13.0",
+    "@typescript-eslint/parser": "^1.13.0",
+    "eslint": "^6.1.0",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-plugin-prettier": "^3.1.0",
     "ip": "^1.1.5",
     "jest": "^24.8.0",
-    "prettier": "^1.15.3",
+    "prettier": "^1.18.2",
     "rimraf": "^2.6.3",
     "ts-jest": "^24.0.2",
-    "tslint": "^5.12.1",
-    "tslint-config-prettier": "^1.17.0",
     "typescript": "^3.2.2"
   },
   "dependencies": {

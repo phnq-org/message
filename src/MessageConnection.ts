@@ -180,7 +180,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     this.conversationHandler = conversationHandler;
   }
 
-  private mapResponse(requestData: R, responseData: S): S {
+  private mapResponse(requestData: R, responseData: S): Value {
     let data = responseData;
     this.responseMappers.forEach((mapper): void => {
       data = mapper(requestData, data);

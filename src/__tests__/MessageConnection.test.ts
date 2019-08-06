@@ -3,8 +3,8 @@ import { ConversationPerspective, ConversationSummary, Value } from '../MessageC
 import { MessageType, Message } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
-const serverTransport = new DirectTransport();
-const serverConnection = new MessageConnection(serverTransport);
+const serverTransport = new DirectTransport<string | undefined>();
+const serverConnection = new MessageConnection<string | undefined, string | undefined>(serverTransport);
 const clientConnection = new MessageConnection(serverTransport.getConnectedTransport());
 
 const wait = (millis: number = 0): Promise<void> =>
@@ -17,8 +17,8 @@ describe('MessageConnection', (): void => {
     describe('requests with multiple responses', (): void => {
       it('should handle multiple responses with an async iterator', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message): AsyncIterableIterator<Value> =>
-            (async function*(): AsyncIterableIterator<Value> {
+          (message): AsyncIterableIterator<string> =>
+            (async function*(): AsyncIterableIterator<string> {
               expect(message).toBe('knock knock');
 
               yield "who's";
@@ -104,8 +104,8 @@ describe('MessageConnection', (): void => {
 
       it('should return an iterator when multiple responses are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message): AsyncIterableIterator<Value> =>
-            (async function*(): AsyncIterableIterator<Value> {
+          (message): AsyncIterableIterator<string | undefined> =>
+            (async function*(): AsyncIterableIterator<string | undefined> {
               yield 'hey';
               yield 'there';
               yield message;

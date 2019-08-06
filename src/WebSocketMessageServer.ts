@@ -7,27 +7,27 @@ import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
 
-interface Config {
+interface Config<S extends Value, R extends Value> {
   httpServer: http.Server;
-  onReceive: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
+  onReceive: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<S> | Promise<S>;
   path?: string;
 }
 
-export class WebSocketMessageServer {
+export class WebSocketMessageServer<S extends Value, R extends Value> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
-  private receiveHandler: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
-  private connections = new Map<ConnectionId, MessageConnection>();
-  private responseMappers: ResponseMapper[] = [];
+  private receiveHandler: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<S> | Promise<S>;
+  private connections = new Map<ConnectionId, MessageConnection<S, R>>();
+  private responseMappers: ResponseMapper<S, R>[] = [];
 
-  public constructor({ httpServer, onReceive, path = '/' }: Config) {
+  public constructor({ httpServer, onReceive, path = '/' }: Config<S, R>) {
     this.httpServer = httpServer;
     this.receiveHandler = onReceive;
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path);
   }
 
-  public getConnection(id: ConnectionId): MessageConnection | undefined {
+  public getConnection(id: ConnectionId): MessageConnection<S, R> | undefined {
     return this.connections.get(id);
   }
 
@@ -37,7 +37,7 @@ export class WebSocketMessageServer {
     });
   }
 
-  public addResponseMapper(mapper: ResponseMapper): void {
+  public addResponseMapper(mapper: ResponseMapper<S, R>): void {
     this.responseMappers.push(mapper);
   }
 
@@ -49,7 +49,7 @@ export class WebSocketMessageServer {
     });
 
     this.wss.on('connection', (socket: WebSocket): void => {
-      const connection = new MessageConnection(new WebSocketTransport(socket));
+      const connection = new MessageConnection<S, R>(new WebSocketTransport<S, R>(socket));
 
       this.responseMappers.forEach((mapper): void => {
         connection.addResponseMapper(mapper);
@@ -59,7 +59,7 @@ export class WebSocketMessageServer {
 
       this.connections.set(connectionId, connection);
 
-      connection.onReceive((message: Value): AsyncIterableIterator<Value> | Promise<Value> =>
+      connection.onReceive((message: R): AsyncIterableIterator<S> | Promise<S> =>
         this.receiveHandler(connectionId, message)
       );
     });

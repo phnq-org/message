@@ -9,10 +9,10 @@ export enum MessageType {
   End = 'end'
 }
 
-export interface Message {
+export interface Message<T extends Value = Value> {
   id: number;
   type: MessageType;
-  data: Value;
+  data: T;
 }
 
 export interface AnomalyMessage extends Message {
@@ -32,7 +32,7 @@ export interface ErrorMessage extends Message {
   };
 }
 
-export interface MessageTransport {
-  send(message: Message): Promise<void>;
-  onReceive(receive: (message: Message) => void): void;
+export interface MessageTransport<S extends Value = Value, R extends Value = Value> {
+  send(message: Message<S>): Promise<void>;
+  onReceive(receive: (message: Message<R>) => void): void;
 }

@@ -14,7 +14,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: (connectionId: ConnectionId, message: Value): AsyncIterableIterator<Value> =>
+        onReceive: async (connectionId: ConnectionId, message: Value): Promise<AsyncIterableIterator<Value>> =>
           (async function*(): AsyncIterableIterator<Value> {
             expect(message).toBe('knock knock');
             expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
@@ -56,7 +56,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: (message: string): AsyncIterableIterator<string> =>
+        onReceive: async (message: string): Promise<AsyncIterableIterator<string>> =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 

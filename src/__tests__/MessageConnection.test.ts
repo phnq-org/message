@@ -17,7 +17,7 @@ describe('MessageConnection', (): void => {
     describe('requests with multiple responses', (): void => {
       it('should handle multiple responses with an async iterator', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message): AsyncIterableIterator<string> =>
+          async (message): Promise<AsyncIterableIterator<string>> =>
             (async function*(): AsyncIterableIterator<string> {
               expect(message).toBe('knock knock');
 
@@ -69,7 +69,7 @@ describe('MessageConnection', (): void => {
 
       it('should return the first response if multiple are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message: Value): AsyncIterableIterator<string> =>
+          async (message: Value): Promise<AsyncIterableIterator<string>> =>
             (async function*(): AsyncIterableIterator<string> {
               yield 'hey';
               yield 'there';
@@ -104,7 +104,7 @@ describe('MessageConnection', (): void => {
 
       it('should return an iterator when multiple responses are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message): AsyncIterableIterator<Value> =>
+          async (message): Promise<AsyncIterableIterator<Value>> =>
             (async function*(): AsyncIterableIterator<Value> {
               yield 'hey';
               yield 'there';
@@ -219,7 +219,7 @@ describe('MessageConnection', (): void => {
 
     it('should handle multiple responses with an async iterator', async (): Promise<void> => {
       serverConn.onReceive(
-        (message): AsyncIterableIterator<string> =>
+        async (message): Promise<AsyncIterableIterator<string>> =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 
@@ -271,7 +271,7 @@ describe('MessageConnection', (): void => {
       });
 
       serverConn.onReceive(
-        (message): AsyncIterableIterator<string> =>
+        async (message): Promise<AsyncIterableIterator<string>> =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 

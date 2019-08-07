@@ -48,7 +48,7 @@ export class MessageConnection {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message>>();
-  private receiveHandler?: (message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
+  private receiveHandler?: (message: Value) => Promise<Value | AsyncIterableIterator<Value>>;
   private responseMappers: ResponseMapper[] = [];
   private conversationHandler?: (c: ConversationSummary) => void;
 
@@ -168,7 +168,7 @@ export class MessageConnection {
     }
   }
 
-  public onReceive(receiveHandler: (value: Value) => AsyncIterableIterator<Value> | Promise<Value>): void {
+  public onReceive(receiveHandler: (value: Value) => Promise<Value | AsyncIterableIterator<Value>>): void {
     this.receiveHandler = receiveHandler;
   }
 
@@ -207,16 +207,9 @@ export class MessageConnection {
     };
 
     try {
-      const result = this.receiveHandler(message.data);
-      if (result instanceof Promise) {
-        const responseData = await result;
-        send({
-          data: this.mapResponse(requestData, responseData),
-          id: message.id,
-          type: MessageType.Response
-        });
-      } else {
-        for await (const responseData of result) {
+      const result = await this.receiveHandler(message.data);
+      if (typeof result === 'object' && (result as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
+        for await (const responseData of result as AsyncIterableIterator<Value>) {
           send({
             data: this.mapResponse(requestData, responseData),
             id: message.id,
@@ -224,6 +217,13 @@ export class MessageConnection {
           });
         }
         send({ id: message.id, type: MessageType.End, data: {} });
+      } else {
+        const responseData = await result;
+        send({
+          data: this.mapResponse(requestData, responseData as Value),
+          id: message.id,
+          type: MessageType.Response
+        });
       }
     } catch (err) {
       if (err instanceof Anomaly) {

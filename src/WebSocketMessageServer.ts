@@ -9,14 +9,14 @@ export type ConnectionId = string;
 
 interface Config {
   httpServer: http.Server;
-  onReceive: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
+  onReceive: (connectionId: ConnectionId, message: Value) => Promise<Value | AsyncIterableIterator<Value>>;
   path?: string;
 }
 
 export class WebSocketMessageServer {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
-  private receiveHandler: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
+  private receiveHandler: (connectionId: ConnectionId, message: Value) => Promise<Value | AsyncIterableIterator<Value>>;
   private connections = new Map<ConnectionId, MessageConnection>();
   private responseMappers: ResponseMapper[] = [];
 
@@ -59,8 +59,8 @@ export class WebSocketMessageServer {
 
       this.connections.set(connectionId, connection);
 
-      connection.onReceive((message: Value): AsyncIterableIterator<Value> | Promise<Value> =>
-        this.receiveHandler(connectionId, message)
+      connection.onReceive(
+        (message: Value): Promise<Value | AsyncIterableIterator<Value>> => this.receiveHandler(connectionId, message)
       );
     });
   }

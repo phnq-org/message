@@ -27,7 +27,7 @@ describe('NATSTransport', (): void => {
   describe('requests with multiple responses', (): void => {
     it('should handle multiple responses with an async iterator', async (): Promise<void> => {
       serverConnection.onReceive(
-        (message): AsyncIterableIterator<string> =>
+        async (message): Promise<AsyncIterableIterator<string>> =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 
@@ -83,7 +83,7 @@ describe('NATSTransport', (): void => {
 
     it('should return the first response if multiple are provided', async (): Promise<void> => {
       serverConnection.onReceive(
-        (message): AsyncIterableIterator<Value> =>
+        async (message): Promise<AsyncIterableIterator<Value>> =>
           (async function*(): AsyncIterableIterator<Value> {
             yield 'hey';
             yield 'there';

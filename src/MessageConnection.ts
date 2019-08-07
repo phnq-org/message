@@ -44,15 +44,15 @@ export type ResponseMapper = (requestData: Value, responseData: Value) => Value;
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
-export class MessageConnection<S extends Value = Value, R extends Value = Value> {
+export class MessageConnection {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
-  private transport: MessageTransport<S, R>;
+  private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message>>();
-  private receiveHandler?: (message: R) => AsyncIterableIterator<S> | Promise<S>;
+  private receiveHandler?: (message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
   private responseMappers: ResponseMapper[] = [];
   private conversationHandler?: (c: ConversationSummary) => void;
 
-  public constructor(transport: MessageTransport<S, R>) {
+  public constructor(transport: MessageTransport) {
     this.transport = transport;
 
     transport.onReceive((message): void => {
@@ -86,17 +86,17 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
    * returns nothing. The caller can ignore the response for a "fire and forget"
    * interaction.
    */
-  public async send(data: S): Promise<void> {
+  public async send(data: Value): Promise<void> {
     await this.requestOne(data);
   }
 
-  public async requestOne(data: S): Promise<R> {
+  public async requestOne(data: Value): Promise<Value> {
     const resp = await this.request(data);
 
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
-      const resps: R[] = [];
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
+      const resps: Value[] = [];
 
-      for await (const r of await (resp as AsyncIterableIterator<R>)) {
+      for await (const r of await (resp as AsyncIterableIterator<Value>)) {
         resps.push(r);
       }
 
@@ -106,22 +106,22 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
 
       return resps[0];
     } else {
-      return resp as R;
+      return resp as Value;
     }
   }
 
-  public async requestMulti(data: S): Promise<AsyncIterableIterator<R>> {
+  public async requestMulti(data: Value): Promise<AsyncIterableIterator<Value>> {
     const resp = await this.request(data);
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
-      return resp as AsyncIterableIterator<R>;
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
+      return resp as AsyncIterableIterator<Value>;
     } else {
-      return (async function*(): AsyncIterableIterator<R> {
-        yield resp as R;
+      return (async function*(): AsyncIterableIterator<Value> {
+        yield resp as Value;
       })();
     }
   }
 
-  public async request(data: S): Promise<AsyncIterableIterator<R> | R> {
+  public async request(data: Value): Promise<AsyncIterableIterator<Value> | Value> {
     const id = idIterator.next().value;
 
     const requestMessage = { type: MessageType.Send, id, data };
@@ -146,13 +146,13 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     const conversationHandler = this.conversationHandler;
 
     if (firstMsg.type === MessageType.Multi) {
-      return (async function*(): AsyncIterableIterator<R> {
-        yield firstMsg.data as R;
+      return (async function*(): AsyncIterableIterator<Value> {
+        yield firstMsg.data;
         for await (const message of responseQueue.iterator()) {
           conversation.responses.push({ message, time: hrtime(start) });
           possiblyThrow(message);
           if (message.type === MessageType.Multi) {
-            yield message.data as R;
+            yield message.data;
           }
         }
         if (conversationHandler) {
@@ -164,11 +164,11 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
         conversationHandler(conversation);
       }
       possiblyThrow(firstMsg);
-      return firstMsg.data as R;
+      return firstMsg.data;
     }
   }
 
-  public onReceive(receiveHandler: (message: R) => AsyncIterableIterator<S> | Promise<S>): void {
+  public onReceive(receiveHandler: (value: Value) => AsyncIterableIterator<Value> | Promise<Value>): void {
     this.receiveHandler = receiveHandler;
   }
 
@@ -188,7 +188,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     return data;
   }
 
-  private async handleReceive(message: Message<R>): Promise<void> {
+  private async handleReceive(message: Message): Promise<void> {
     if (!this.receiveHandler) {
       throw new Error('No receive handler set.');
     }
@@ -202,7 +202,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     const requestData = message.data;
 
     const send = (m: Message): void => {
-      this.transport.send(m as Message<S>);
+      this.transport.send(m as Message);
       conversation.responses.push({ message: m, time: hrtime(start) });
     };
 

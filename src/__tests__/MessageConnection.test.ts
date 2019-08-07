@@ -3,8 +3,8 @@ import { ConversationPerspective, ConversationSummary, Value } from '../MessageC
 import { MessageType, Message } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
-const serverTransport = new DirectTransport<string | undefined>();
-const serverConnection = new MessageConnection<string | undefined, string | undefined>(serverTransport);
+const serverTransport = new DirectTransport();
+const serverConnection = new MessageConnection(serverTransport);
 const clientConnection = new MessageConnection(serverTransport.getConnectedTransport());
 
 const wait = (millis: number = 0): Promise<void> =>
@@ -104,8 +104,8 @@ describe('MessageConnection', (): void => {
 
       it('should return an iterator when multiple responses are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          (message): AsyncIterableIterator<string | undefined> =>
-            (async function*(): AsyncIterableIterator<string | undefined> {
+          (message): AsyncIterableIterator<Value> =>
+            (async function*(): AsyncIterableIterator<Value> {
               yield 'hey';
               yield 'there';
               yield message;
@@ -207,9 +207,9 @@ describe('MessageConnection', (): void => {
   });
 
   describe('Response mappers', (): void => {
-    const serverTrans = new DirectTransport<string>();
-    const serverConn = new MessageConnection<string, string>(serverTrans);
-    const clientConn = new MessageConnection<string, string>(serverTrans.getConnectedTransport());
+    const serverTrans = new DirectTransport();
+    const serverConn = new MessageConnection(serverTrans);
+    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
 
     serverConn.addResponseMapper(
       (req, resp): Value => {

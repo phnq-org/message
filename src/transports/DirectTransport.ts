@@ -1,28 +1,27 @@
 import { Message, MessageTransport } from '../MessageTransport';
-import { Value } from '../MessageConnection';
 
-export class DirectTransport<T extends Value> implements MessageTransport {
-  private connectedTransport: DirectTransport<T>;
+export class DirectTransport implements MessageTransport {
+  private connectedTransport: DirectTransport;
 
-  public constructor(transport?: DirectTransport<T>) {
-    this.connectedTransport = transport || new DirectTransport<T>(this);
+  public constructor(transport?: DirectTransport) {
+    this.connectedTransport = transport || new DirectTransport(this);
   }
 
-  public getConnectedTransport(): DirectTransport<T> {
+  public getConnectedTransport(): DirectTransport {
     return this.connectedTransport;
   }
 
-  public async send(message: Message<T>): Promise<void> {
+  public async send(message: Message): Promise<void> {
     this.connectedTransport.handleReceive(message);
   }
 
-  public onReceive(receive: (message: Message<T>) => void): void {
+  public onReceive(receive: (message: Message) => void): void {
     this.receive = receive;
   }
 
-  private receive: (message: Message<T>) => void = (): void => {};
+  private receive: (message: Message) => void = (): void => {};
 
-  private handleReceive(message: Message<T>): void {
+  private handleReceive(message: Message): void {
     this.receive(message);
   }
 }

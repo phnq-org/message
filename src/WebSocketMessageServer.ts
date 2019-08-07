@@ -7,27 +7,27 @@ import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
 
-interface Config<S extends Value, R extends Value> {
+interface Config {
   httpServer: http.Server;
-  onReceive: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<S> | Promise<S>;
+  onReceive: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
   path?: string;
 }
 
-export class WebSocketMessageServer<S extends Value, R extends Value> {
+export class WebSocketMessageServer {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
-  private receiveHandler: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<S> | Promise<S>;
-  private connections = new Map<ConnectionId, MessageConnection<S, R>>();
+  private receiveHandler: (connectionId: ConnectionId, message: Value) => AsyncIterableIterator<Value> | Promise<Value>;
+  private connections = new Map<ConnectionId, MessageConnection>();
   private responseMappers: ResponseMapper[] = [];
 
-  public constructor({ httpServer, onReceive, path = '/' }: Config<S, R>) {
+  public constructor({ httpServer, onReceive, path = '/' }: Config) {
     this.httpServer = httpServer;
     this.receiveHandler = onReceive;
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path);
   }
 
-  public getConnection(id: ConnectionId): MessageConnection<S, R> | undefined {
+  public getConnection(id: ConnectionId): MessageConnection | undefined {
     return this.connections.get(id);
   }
 
@@ -49,7 +49,7 @@ export class WebSocketMessageServer<S extends Value, R extends Value> {
     });
 
     this.wss.on('connection', (socket: WebSocket): void => {
-      const connection = new MessageConnection<S, R>(new WebSocketTransport<S, R>(socket));
+      const connection = new MessageConnection(new WebSocketTransport(socket));
 
       this.responseMappers.forEach((mapper): void => {
         connection.addResponseMapper(mapper);
@@ -59,7 +59,7 @@ export class WebSocketMessageServer<S extends Value, R extends Value> {
 
       this.connections.set(connectionId, connection);
 
-      connection.onReceive((message: R): AsyncIterableIterator<S> | Promise<S> =>
+      connection.onReceive((message: Value): AsyncIterableIterator<Value> | Promise<Value> =>
         this.receiveHandler(connectionId, message)
       );
     });

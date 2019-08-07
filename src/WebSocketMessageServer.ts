@@ -2,7 +2,7 @@ import http from 'http';
 import WebSocket from 'isomorphic-ws';
 import net from 'net';
 import uuid from 'uuid/v4';
-import { Value, MessageConnection, ResponseMapper } from './MessageConnection';
+import { Value, MessageConnection } from './MessageConnection';
 import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
@@ -18,7 +18,6 @@ export class WebSocketMessageServer {
   private wss: WebSocket.Server;
   private receiveHandler: (connectionId: ConnectionId, message: Value) => Promise<Value | AsyncIterableIterator<Value>>;
   private connections = new Map<ConnectionId, MessageConnection>();
-  private responseMappers: ResponseMapper[] = [];
 
   public constructor({ httpServer, onReceive, path = '/' }: Config) {
     this.httpServer = httpServer;
@@ -37,10 +36,6 @@ export class WebSocketMessageServer {
     });
   }
 
-  public addResponseMapper(mapper: ResponseMapper): void {
-    this.responseMappers.push(mapper);
-  }
-
   private start(path: string): void {
     this.httpServer.on('upgrade', (req: http.IncomingMessage, socket: net.Socket): void => {
       if (req.url !== path) {
@@ -50,10 +45,6 @@ export class WebSocketMessageServer {
 
     this.wss.on('connection', (socket: WebSocket): void => {
       const connection = new MessageConnection(new WebSocketTransport(socket));
-
-      this.responseMappers.forEach((mapper): void => {
-        connection.addResponseMapper(mapper);
-      });
 
       const connectionId = uuid();
 

@@ -206,53 +206,6 @@ describe('MessageConnection', (): void => {
     });
   });
 
-  describe('Response mappers', (): void => {
-    const serverTrans = new DirectTransport();
-    const serverConn = new MessageConnection(serverTrans);
-    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
-
-    serverConn.addResponseMapper(
-      (req, resp): Value => {
-        return { wrapped: resp, req };
-      }
-    );
-
-    it('should handle multiple responses with an async iterator', async (): Promise<void> => {
-      serverConn.onReceive(
-        async (message): Promise<AsyncIterableIterator<string>> =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
-
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })()
-      );
-
-      const resps = [];
-      for await (const resp of await clientConn.requestMulti('knock knock')) {
-        resps.push(resp);
-      }
-
-      expect(resps).toEqual([
-        { wrapped: "who's", req: 'knock knock' },
-        { wrapped: 'there', req: 'knock knock' },
-        { wrapped: '?', req: 'knock knock' }
-      ]);
-    });
-
-    it('should handle a single returned response with a single value', async (): Promise<void> => {
-      serverConn.onReceive(
-        async (message): Promise<string> => {
-          return `you said ${message}`;
-        }
-      );
-
-      const resp = await clientConn.request('hello');
-      expect(resp).toEqual({ wrapped: 'you said hello', req: 'hello' });
-    });
-  });
-
   describe('Conversation Summaries', (): void => {
     const serverTrans = new DirectTransport();
     const serverConn = new MessageConnection(serverTrans);

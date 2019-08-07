@@ -40,8 +40,6 @@ export interface ConversationSummary {
   responses: { message: Message; time: [number, number] }[];
 }
 
-export type ResponseMapper = (requestData: Value, responseData: Value) => Value;
-
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
 export class MessageConnection {
@@ -49,7 +47,6 @@ export class MessageConnection {
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message>>();
   private receiveHandler?: (message: Value) => Promise<Value | AsyncIterableIterator<Value>>;
-  private responseMappers: ResponseMapper[] = [];
   private conversationHandler?: (c: ConversationSummary) => void;
 
   public constructor(transport: MessageTransport) {
@@ -172,20 +169,8 @@ export class MessageConnection {
     this.receiveHandler = receiveHandler;
   }
 
-  public addResponseMapper(mapper: ResponseMapper): void {
-    this.responseMappers.push(mapper);
-  }
-
   public onConversation(conversationHandler: (c: ConversationSummary) => void): void {
     this.conversationHandler = conversationHandler;
-  }
-
-  private mapResponse(requestData: Value, responseData: Value): Value {
-    let data = responseData;
-    this.responseMappers.forEach((mapper): void => {
-      data = mapper(requestData, data);
-    });
-    return data;
   }
 
   private async handleReceive(message: Message): Promise<void> {
@@ -211,7 +196,7 @@ export class MessageConnection {
       if (typeof result === 'object' && (result as AsyncIterableIterator<Value>)[Symbol.asyncIterator]) {
         for await (const responseData of result as AsyncIterableIterator<Value>) {
           send({
-            data: this.mapResponse(requestData, responseData),
+            data: responseData,
             id: message.id,
             type: MessageType.Multi
           });
@@ -220,7 +205,7 @@ export class MessageConnection {
       } else {
         const responseData = await result;
         send({
-          data: this.mapResponse(requestData, responseData as Value),
+          data: responseData as Value,
           id: message.id,
           type: MessageType.Response
         });

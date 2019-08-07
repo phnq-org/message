@@ -40,7 +40,7 @@ export interface ConversationSummary {
   responses: { message: Message; time: [number, number] }[];
 }
 
-export type ResponseMapper<S extends Value, R extends Value> = (requestData: R, responseData: S) => S;
+export type ResponseMapper = (requestData: Value, responseData: Value) => Value;
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
@@ -49,7 +49,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
   private transport: MessageTransport<S, R>;
   private responseQueues = new Map<number, AsyncQueue<Message>>();
   private receiveHandler?: (message: R) => AsyncIterableIterator<S> | Promise<S>;
-  private responseMappers: ResponseMapper<S, R>[] = [];
+  private responseMappers: ResponseMapper[] = [];
   private conversationHandler?: (c: ConversationSummary) => void;
 
   public constructor(transport: MessageTransport<S, R>) {
@@ -172,7 +172,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     this.receiveHandler = receiveHandler;
   }
 
-  public addResponseMapper(mapper: ResponseMapper<S, R>): void {
+  public addResponseMapper(mapper: ResponseMapper): void {
     this.responseMappers.push(mapper);
   }
 
@@ -180,7 +180,7 @@ export class MessageConnection<S extends Value = Value, R extends Value = Value>
     this.conversationHandler = conversationHandler;
   }
 
-  private mapResponse(requestData: R, responseData: S): Value {
+  private mapResponse(requestData: Value, responseData: Value): Value {
     let data = responseData;
     this.responseMappers.forEach((mapper): void => {
       data = mapper(requestData, data);

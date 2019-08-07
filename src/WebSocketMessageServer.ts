@@ -18,7 +18,7 @@ export class WebSocketMessageServer<S extends Value, R extends Value> {
   private wss: WebSocket.Server;
   private receiveHandler: (connectionId: ConnectionId, message: R) => AsyncIterableIterator<S> | Promise<S>;
   private connections = new Map<ConnectionId, MessageConnection<S, R>>();
-  private responseMappers: ResponseMapper<S, R>[] = [];
+  private responseMappers: ResponseMapper[] = [];
 
   public constructor({ httpServer, onReceive, path = '/' }: Config<S, R>) {
     this.httpServer = httpServer;
@@ -37,7 +37,7 @@ export class WebSocketMessageServer<S extends Value, R extends Value> {
     });
   }
 
-  public addResponseMapper(mapper: ResponseMapper<S, R>): void {
+  public addResponseMapper(mapper: ResponseMapper): void {
     this.responseMappers.push(mapper);
   }
 

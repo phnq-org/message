@@ -207,9 +207,9 @@ describe('MessageConnection', (): void => {
   });
 
   describe('Response mappers', (): void => {
-    const serverTrans = new DirectTransport();
-    const serverConn = new MessageConnection(serverTrans);
-    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
+    const serverTrans = new DirectTransport<string>();
+    const serverConn = new MessageConnection<string, string>(serverTrans);
+    const clientConn = new MessageConnection<string, string>(serverTrans.getConnectedTransport());
 
     serverConn.addResponseMapper(
       (req, resp): Value => {

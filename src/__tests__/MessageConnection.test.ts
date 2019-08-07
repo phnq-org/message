@@ -1,11 +1,11 @@
-import { Anomaly, MessageConnection } from '../index.client';
-import { ConversationPerspective, ConversationSummary, Value } from '../MessageConnection';
+import { ConversationPerspective, ConversationSummary, Value, MessageConnection } from '../MessageConnection';
 import { MessageType, Message } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
+import { Anomaly } from '../errors';
 
 const serverTransport = new DirectTransport();
-const serverConnection = new MessageConnection(serverTransport);
-const clientConnection = new MessageConnection(serverTransport.getConnectedTransport());
+const serverConnection = new MessageConnection<string>(serverTransport);
+const clientConnection = new MessageConnection<string>(serverTransport.getConnectedTransport());
 
 const wait = (millis: number = 0): Promise<void> =>
   new Promise((resolve): void => {
@@ -104,8 +104,8 @@ describe('MessageConnection', (): void => {
 
       it('should return an iterator when multiple responses are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          async (message): Promise<AsyncIterableIterator<Value>> =>
-            (async function*(): AsyncIterableIterator<Value> {
+          async (message): Promise<AsyncIterableIterator<string>> =>
+            (async function*(): AsyncIterableIterator<string> {
               yield 'hey';
               yield 'there';
               yield message;
@@ -130,16 +130,16 @@ describe('MessageConnection', (): void => {
         const clientReceive = jest.fn();
 
         serverConnection.onReceive(
-          async (message): Promise<undefined> => {
+          async (message): Promise<string> => {
             serverReceive(message);
-            return undefined;
+            return '';
           }
         );
 
         clientConnection.onReceive(
-          async (message): Promise<undefined> => {
+          async (message): Promise<string> => {
             clientReceive(message);
-            return undefined;
+            return '';
           }
         );
 
@@ -153,7 +153,7 @@ describe('MessageConnection', (): void => {
     describe('handling errors', (): void => {
       it('should handle internal errors', async (): Promise<void> => {
         serverConnection.onReceive(
-          async (message): Promise<undefined> => {
+          async (message): Promise<string> => {
             throw new Error(`Error: ${message}`);
           }
         );
@@ -169,7 +169,7 @@ describe('MessageConnection', (): void => {
 
       it('should handle anomalies', async (): Promise<void> => {
         serverConnection.onReceive(
-          async (message): Promise<undefined> => {
+          async (message): Promise<string> => {
             throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
           }
         );
@@ -208,8 +208,8 @@ describe('MessageConnection', (): void => {
 
   describe('Conversation Summaries', (): void => {
     const serverTrans = new DirectTransport();
-    const serverConn = new MessageConnection(serverTrans);
-    const clientConn = new MessageConnection(serverTrans.getConnectedTransport());
+    const serverConn = new MessageConnection<string>(serverTrans);
+    const clientConn = new MessageConnection<string>(serverTrans.getConnectedTransport());
 
     it('should yield expected summaries that agree client vs. server', async (): Promise<void> => {
       let clientConvSummary: ConversationSummary | undefined;
@@ -246,8 +246,8 @@ describe('MessageConnection', (): void => {
         expect(clientConvSummary.perspective).toBe(ConversationPerspective.Requester);
         expect(serverConvSummary.perspective).toBe(ConversationPerspective.Responder);
 
-        expect(serverConvSummary.responses.map(({ message }): Message => message)).toEqual(
-          clientConvSummary.responses.map(({ message }): Message => message)
+        expect(serverConvSummary.responses.map(({ message }): Message<Value> => message)).toEqual(
+          clientConvSummary.responses.map(({ message }): Message<Value> => message)
         );
 
         expect(serverConvSummary.responses.length).toBe(4);

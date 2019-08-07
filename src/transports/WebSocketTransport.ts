@@ -1,6 +1,7 @@
 import WebSocket from 'isomorphic-ws';
 import { Message, MessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
+import { Value } from '../MessageConnection';
 
 export class WebSocketTransport implements MessageTransport {
   private socket: WebSocket;
@@ -9,11 +10,11 @@ export class WebSocketTransport implements MessageTransport {
     this.socket = socket;
   }
 
-  public async send(message: Message): Promise<void> {
+  public async send(message: Message<Value>): Promise<void> {
     this.socket.send(serialize(message));
   }
 
-  public onReceive(receive: (message: Message) => void): void {
+  public onReceive(receive: (message: Message<Value>) => void): void {
     this.socket.addEventListener('message', (event): void => {
       receive(deserialize(event.data));
     });

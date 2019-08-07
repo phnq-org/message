@@ -1,20 +1,20 @@
 import { Client, connect } from 'ts-nats';
 import { Anomaly } from '../errors';
-import { MessageConnection, Value } from '../MessageConnection';
+import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';
 
 describe('NATSTransport', (): void => {
   let nc: Client;
-  let clientConnection: MessageConnection;
-  let serverConnection: MessageConnection;
+  let clientConnection: MessageConnection<string | undefined>;
+  let serverConnection: MessageConnection<string | undefined>;
 
   beforeAll(
     async (): Promise<void> => {
       nc = await connect();
-      clientConnection = new MessageConnection(
+      clientConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] })
       );
-      serverConnection = new MessageConnection(
+      serverConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(nc, { publishSubject: 's2', subscriptions: ['s1'] })
       );
     }
@@ -83,8 +83,8 @@ describe('NATSTransport', (): void => {
 
     it('should return the first response if multiple are provided', async (): Promise<void> => {
       serverConnection.onReceive(
-        async (message): Promise<AsyncIterableIterator<Value>> =>
-          (async function*(): AsyncIterableIterator<Value> {
+        async (message): Promise<AsyncIterableIterator<string | undefined>> =>
+          (async function*(): AsyncIterableIterator<string | undefined> {
             yield 'hey';
             yield 'there';
             yield message;

@@ -1,4 +1,5 @@
 import { Message, MessageTransport } from '../MessageTransport';
+import { Value } from '../MessageConnection';
 
 export class DirectTransport implements MessageTransport {
   private connectedTransport: DirectTransport;
@@ -11,17 +12,17 @@ export class DirectTransport implements MessageTransport {
     return this.connectedTransport;
   }
 
-  public async send(message: Message): Promise<void> {
+  public async send(message: Message<Value>): Promise<void> {
     this.connectedTransport.handleReceive(message);
   }
 
-  public onReceive(receive: (message: Message) => void): void {
+  public onReceive(receive: (message: Message<Value>) => void): void {
     this.receive = receive;
   }
 
-  private receive: (message: Message) => void = (): void => {};
+  private receive: (message: Message<Value>) => void = (): void => {};
 
-  private handleReceive(message: Message): void {
+  private handleReceive(message: Message<Value>): void {
     this.receive(message);
   }
 }

@@ -1,9 +1,9 @@
 import WebSocket from 'isomorphic-ws';
-import { MessageConnection } from './MessageConnection';
+import { MessageConnection, Value } from './MessageConnection';
 import { WebSocketTransport } from './transports/WebSocketTransport';
 
-export class WebSocketMessageClient extends MessageConnection {
-  public static async create(url: string): Promise<WebSocketMessageClient> {
+export class WebSocketMessageClient<T extends Value> extends MessageConnection<T> {
+  public static async create<T extends Value>(url: string): Promise<WebSocketMessageClient<T>> {
     return new WebSocketMessageClient(
       await new Promise<WebSocket>((resolve): void => {
         const s = new WebSocket(url);

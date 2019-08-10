@@ -1,5 +1,4 @@
-export const serialize = (val: any): string => JSON.stringify(annotate(val));
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const annotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;
@@ -21,8 +20,6 @@ const annotate = (val: any): any => {
 
   return val;
 };
-
-export const deserialize = (str: string) => deannotate(JSON.parse(str));
 
 const DATE_RE = /^(.+)@@@D$/;
 
@@ -47,3 +44,6 @@ const deannotate = (val: any): any => {
 
   return val;
 };
+
+export const serialize = (val: any): string => JSON.stringify(annotate(val));
+export const deserialize = (str: string): any => deannotate(JSON.parse(str));

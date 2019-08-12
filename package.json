@@ -44,7 +44,6 @@
     "prettier": "^1.18.2",
     "rimraf": "^2.6.3",
     "ts-jest": "^24.0.2",
-    "ts-nats": "^1.2.4",
     "ts-node": "^8.3.0",
     "typescript": "^3.2.2"
   },
@@ -53,6 +52,7 @@
     "@phnq/streams": "^1.1.0",
     "browser-process-hrtime": "^1.0.0",
     "isomorphic-ws": "^4.0.1",
+    "ts-nats": "^1.2.4",
     "uuid": "^3.3.2",
     "ws": "^7.1.1"
   }

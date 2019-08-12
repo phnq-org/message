@@ -1,3 +1,4 @@
+import 'ws'; // need to explicitly import this so it gets loaded as a dependency
 import WebSocket from 'isomorphic-ws';
 import { Message, MessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';

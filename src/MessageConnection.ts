@@ -78,6 +78,10 @@ export class MessageConnection<T extends Value> {
     });
   }
 
+  public async ping(): Promise<boolean> {
+    return (await this.doRequest('__ping__')) === '__pong__';
+  }
+
   /**
    * Note: this will yield a response of undefined even if the handler
    * returns nothing. The caller can ignore the response for a "fire and forget"
@@ -119,6 +123,10 @@ export class MessageConnection<T extends Value> {
   }
 
   public async request(data: T): Promise<AsyncIterableIterator<T> | T> {
+    return this.doRequest(data) as Promise<AsyncIterableIterator<T> | T>;
+  }
+
+  private async doRequest(data: Value): Promise<AsyncIterableIterator<Value> | Value> {
     const id = idIterator.next().value;
 
     const requestMessage = { type: MessageType.Send, id, data };
@@ -174,10 +182,6 @@ export class MessageConnection<T extends Value> {
   }
 
   private async handleReceive(message: Message<T>): Promise<void> {
-    if (!this.receiveHandler) {
-      throw new Error('No receive handler set.');
-    }
-
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Responder,
       request: message,
@@ -191,8 +195,21 @@ export class MessageConnection<T extends Value> {
       conversation.responses.push({ message: m, time: hrtime(start) });
     };
 
+    if (requestData === '__ping__') {
+      send({
+        data: '__pong__',
+        id: message.id,
+        type: MessageType.Response
+      });
+      return;
+    }
+
+    if (!this.receiveHandler) {
+      throw new Error('No receive handler set.');
+    }
+
     try {
-      const result = await this.receiveHandler(message.data);
+      const result = await this.receiveHandler(requestData);
       if (typeof result === 'object' && (result as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
         for await (const responseData of result as AsyncIterableIterator<T>) {
           send({

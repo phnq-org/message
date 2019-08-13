@@ -258,4 +258,27 @@ describe('MessageConnection', (): void => {
       }
     });
   });
+
+  describe('ping/pong', (): void => {
+    it('should return true for ping when connected', async (): Promise<void> => {
+      const serverTrans = new DirectTransport();
+      const serverConn = new MessageConnection<string>(serverTrans);
+      const clientConn = new MessageConnection<string>(serverTrans.getConnectedTransport());
+
+      expect(await serverConn.ping()).toBe(true);
+      expect(await clientConn.ping()).toBe(true);
+    });
+
+    it('should throw for ping when not connected', async (): Promise<void> => {
+      const nonConn = new MessageConnection<string>(new DirectTransport());
+      nonConn.responseTimeout = 50;
+
+      try {
+        await nonConn.ping();
+        fail('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+      }
+    });
+  });
 });

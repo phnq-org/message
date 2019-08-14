@@ -22,7 +22,7 @@ describe('MessageConnection', (): void => {
             yield "who's";
             yield 'there';
             yield '?';
-          })()
+          })(),
       });
 
       const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555');
@@ -64,7 +64,7 @@ describe('MessageConnection', (): void => {
             yield 'there';
             yield '?';
           })(),
-        path: '/the-path'
+        path: '/the-path',
       });
 
       const clientConnection = await WebSocketMessageClient.create('ws://localhost:55555/the-wrong-path');

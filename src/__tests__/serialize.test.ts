@@ -5,7 +5,7 @@ describe('serialize and deserialize', (): void => {
     const obj = {
       date: new Date(),
       foo: 'bar',
-      nums: [1, 2, 3, 4, 5]
+      nums: [1, 2, 3, 4, 5],
     };
 
     expect(deserialize(serialize(obj))).toEqual(obj);

@@ -24,7 +24,7 @@ describe('MessageConnection', (): void => {
               yield "who's";
               yield 'there';
               yield '?';
-            })()
+            })(),
         );
 
         const resps1 = [];
@@ -46,7 +46,7 @@ describe('MessageConnection', (): void => {
         serverConnection.onReceive(
           async (message): Promise<string> => {
             return `you said ${message}`;
-          }
+          },
         );
 
         const resp = await clientConnection.requestOne('hello');
@@ -59,7 +59,7 @@ describe('MessageConnection', (): void => {
         serverConnection.onReceive(
           async (message): Promise<string> => {
             return `you said ${message}`;
-          }
+          },
         );
 
         const resp = await clientConnection.requestOne('hello');
@@ -74,7 +74,7 @@ describe('MessageConnection', (): void => {
               yield 'hey';
               yield 'there';
               yield message as string;
-            })()
+            })(),
         );
 
         const resp = await clientConnection.requestOne('hello');
@@ -88,7 +88,7 @@ describe('MessageConnection', (): void => {
         serverConnection.onReceive(
           async (message): Promise<string> => {
             return `you said ${message}`;
-          }
+          },
         );
 
         const resp = await clientConnection.requestMulti('hello');
@@ -109,7 +109,7 @@ describe('MessageConnection', (): void => {
               yield 'hey';
               yield 'there';
               yield message;
-            })()
+            })(),
         );
 
         const resp = await clientConnection.requestMulti('hello');
@@ -133,14 +133,14 @@ describe('MessageConnection', (): void => {
           async (message): Promise<string> => {
             serverReceive(message);
             return '';
-          }
+          },
         );
 
         clientConnection.onReceive(
           async (message): Promise<string> => {
             clientReceive(message);
             return '';
-          }
+          },
         );
 
         await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
@@ -155,7 +155,7 @@ describe('MessageConnection', (): void => {
         serverConnection.onReceive(
           async (message): Promise<string> => {
             throw new Error(`Error: ${message}`);
-          }
+          },
         );
 
         try {
@@ -171,7 +171,7 @@ describe('MessageConnection', (): void => {
         serverConnection.onReceive(
           async (message): Promise<string> => {
             throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
-          }
+          },
         );
 
         try {
@@ -194,7 +194,7 @@ describe('MessageConnection', (): void => {
         async (message): Promise<string> => {
           await wait(100);
           return `you said ${message}`;
-        }
+        },
       );
 
       try {
@@ -231,7 +231,7 @@ describe('MessageConnection', (): void => {
             yield "who's";
             yield 'there';
             yield '?';
-          })()
+          })(),
       );
 
       const resps = [];
@@ -247,7 +247,7 @@ describe('MessageConnection', (): void => {
         expect(serverConvSummary.perspective).toBe(ConversationPerspective.Responder);
 
         expect(serverConvSummary.responses.map(({ message }): Message<Value> => message)).toEqual(
-          clientConvSummary.responses.map(({ message }): Message<Value> => message)
+          clientConvSummary.responses.map(({ message }): Message<Value> => message),
         );
 
         expect(serverConvSummary.responses.length).toBe(4);

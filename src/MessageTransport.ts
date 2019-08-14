@@ -6,11 +6,15 @@ export enum MessageType {
   Anomaly = 'anomaly',
   Response = 'response',
   Multi = 'multi',
-  End = 'end'
+  End = 'end',
 }
 
 export interface Message<T extends Value> {
-  id: number;
+  reqId: number;
+  source: {
+    id: string;
+    info?: Value;
+  };
   type: MessageType;
   data: T;
 }

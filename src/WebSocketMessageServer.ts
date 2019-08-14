@@ -51,7 +51,7 @@ export class WebSocketMessageServer<T extends Value> {
       this.connections.set(connectionId, connection);
 
       connection.onReceive(
-        (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message)
+        (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message),
       );
     });
   }

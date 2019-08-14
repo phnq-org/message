@@ -12,12 +12,12 @@ describe('NATSTransport', (): void => {
     async (): Promise<void> => {
       nc = await connect();
       clientConnection = new MessageConnection<string | undefined>(
-        await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] })
+        await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] }),
       );
       serverConnection = new MessageConnection<string | undefined>(
-        await NATSTransport.create(nc, { publishSubject: 's2', subscriptions: ['s1'] })
+        await NATSTransport.create(nc, { publishSubject: 's2', subscriptions: ['s1'] }),
       );
-    }
+    },
   );
 
   afterAll((): void => {
@@ -34,7 +34,7 @@ describe('NATSTransport', (): void => {
             yield "who's";
             yield 'there';
             yield '?';
-          })()
+          })(),
       );
 
       const resps1 = [];
@@ -56,7 +56,7 @@ describe('NATSTransport', (): void => {
       serverConnection.onReceive(
         async (message): Promise<string> => {
           return `you said ${message}`;
-        }
+        },
       );
 
       const resps1 = [];
@@ -73,7 +73,7 @@ describe('NATSTransport', (): void => {
       serverConnection.onReceive(
         async (message): Promise<string> => {
           return `you said ${message}`;
-        }
+        },
       );
 
       const resp = await clientConnection.requestOne('hello');
@@ -88,7 +88,7 @@ describe('NATSTransport', (): void => {
             yield 'hey';
             yield 'there';
             yield message;
-          })()
+          })(),
       );
 
       const resp = await clientConnection.requestOne('hello');
@@ -106,14 +106,14 @@ describe('NATSTransport', (): void => {
         async (message): Promise<undefined> => {
           serverReceive(message);
           return undefined;
-        }
+        },
       );
 
       clientConnection.onReceive(
         async (message): Promise<undefined> => {
           clientReceive(message);
           return undefined;
-        }
+        },
       );
 
       await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
@@ -128,7 +128,7 @@ describe('NATSTransport', (): void => {
       serverConnection.onReceive(
         async (message): Promise<undefined> => {
           throw new Error(`Error: ${message}`);
-        }
+        },
       );
 
       try {
@@ -144,7 +144,7 @@ describe('NATSTransport', (): void => {
       serverConnection.onReceive(
         async (message): Promise<undefined> => {
           throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
-        }
+        },
       );
 
       try {

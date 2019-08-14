@@ -32,7 +32,7 @@ export class NATSTransport implements MessageTransport {
 
     let subject: string | undefined;
     if (message.type === MessageType.End) {
-      subject = this.subjectById.get(message.id);
+      subject = this.subjectById.get(message.reqId);
     } else {
       subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
     }
@@ -42,9 +42,9 @@ export class NATSTransport implements MessageTransport {
     }
 
     if (message.type === MessageType.End) {
-      this.subjectById.delete(message.id);
+      this.subjectById.delete(message.reqId);
     } else {
-      this.subjectById.set(message.id, subject);
+      this.subjectById.set(message.reqId, subject);
     }
 
     await this.nc.publish(subject, serialize(message));
@@ -62,8 +62,8 @@ export class NATSTransport implements MessageTransport {
             if (this.receiveHandler) {
               this.receiveHandler(deserialize(msg.data));
             }
-          })
-      )
+          }),
+      ),
     );
   }
 }

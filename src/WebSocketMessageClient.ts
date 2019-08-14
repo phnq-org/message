@@ -10,7 +10,7 @@ export class WebSocketMessageClient<T extends Value> extends MessageConnection<T
         s.addEventListener('open', (): void => {
           resolve(s);
         });
-      })
+      }),
     );
   }
 

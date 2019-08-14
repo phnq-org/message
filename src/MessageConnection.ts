@@ -3,6 +3,8 @@ import { AsyncQueue } from '@phnq/streams';
 import hrtime from 'browser-process-hrtime';
 import { Anomaly } from './errors';
 import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
+import uuid from 'uuid/v4';
+
 const log = createLogger('MessageConnection');
 
 const idIterator = (function*(): IterableIterator<number> {
@@ -31,7 +33,7 @@ export interface Data {
 
 export enum ConversationPerspective {
   Requester = 'requester',
-  Responder = 'responder'
+  Responder = 'responder',
 }
 
 export interface ConversationSummary {
@@ -44,6 +46,8 @@ const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
 export class MessageConnection<T extends Value> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
+  private connId = uuid();
+  public info?: Value;
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T>>;
@@ -53,29 +57,35 @@ export class MessageConnection<T extends Value> {
     this.transport = transport;
 
     transport.onReceive((message): void => {
-      const responseQueue = this.responseQueues.get(message.id);
-      switch (message.type) {
-        case MessageType.Send:
-          this.handleReceive(message as Message<T>);
-          break;
+      if (message.type === MessageType.Send) {
+        this.handleReceive(message as Message<T>);
+        return;
+      }
 
+      const responseQueue = this.responseQueues.get(message.reqId);
+      if (!responseQueue) {
+        log.warn('No response queue for message: %s', JSON.stringify(message));
+        return;
+      }
+
+      switch (message.type) {
         case MessageType.Response:
         case MessageType.Anomaly:
         case MessageType.Error:
         case MessageType.End:
-          if (responseQueue) {
-            responseQueue.enqueue(message as Message<T>);
-            responseQueue.flush();
-          }
+          responseQueue.enqueue(message as Message<T>);
+          responseQueue.flush();
           break;
 
         case MessageType.Multi:
-          if (responseQueue) {
-            responseQueue.enqueue(message as Message<T>);
-          }
+          responseQueue.enqueue(message as Message<T>);
           break;
       }
     });
+  }
+
+  public get id(): string {
+    return this.connId;
   }
 
   public async ping(): Promise<boolean> {
@@ -102,7 +112,7 @@ export class MessageConnection<T extends Value> {
       }
 
       if (resps.length > 1) {
-        log('requestOne: multiple responses were returned -- all but the first were discarded');
+        log.warn('requestOne: multiple responses were returned -- all but the first were discarded');
       }
 
       return resps[0];
@@ -127,20 +137,26 @@ export class MessageConnection<T extends Value> {
   }
 
   private async doRequest(data: Value): Promise<AsyncIterableIterator<Value> | Value> {
-    const id = idIterator.next().value;
+    const reqId = idIterator.next().value;
+    const responseQueues = this.responseQueues;
 
-    const requestMessage = { type: MessageType.Send, id, data };
+    const requestMessage: Message<Value> = {
+      type: MessageType.Send,
+      reqId,
+      data,
+      source: { id: this.id, info: this.info },
+    };
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
       request: requestMessage,
-      responses: []
+      responses: [],
     };
     const start = hrtime();
 
     const responseQueue = new AsyncQueue<Message<T>>();
     responseQueue.maxWaitTime = this.responseTimeout;
-    this.responseQueues.set(id, responseQueue);
+    responseQueues.set(reqId, responseQueue);
 
     await this.transport.send(requestMessage);
 
@@ -153,18 +169,30 @@ export class MessageConnection<T extends Value> {
     if (firstMsg.type === MessageType.Multi) {
       return (async function*(): AsyncIterableIterator<T> {
         yield firstMsg.data;
-        for await (const message of responseQueue.iterator()) {
-          conversation.responses.push({ message, time: hrtime(start) });
-          possiblyThrow(message);
-          if (message.type === MessageType.Multi) {
-            yield message.data;
+        try {
+          for await (const message of responseQueue.iterator()) {
+            if (message.source.id === firstMsg.source.id) {
+              conversation.responses.push({ message, time: hrtime(start) });
+              possiblyThrow(message);
+              if (message.type === MessageType.Multi) {
+                yield message.data;
+              }
+            } else {
+              log.warn(
+                'Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s',
+                JSON.stringify(data),
+              );
+            }
           }
-        }
-        if (conversationHandler) {
-          conversationHandler(conversation);
+          if (conversationHandler) {
+            conversationHandler(conversation);
+          }
+        } finally {
+          responseQueues.delete(reqId);
         }
       })();
     } else {
+      responseQueues.delete(reqId);
       if (conversationHandler) {
         conversationHandler(conversation);
       }
@@ -185,7 +213,7 @@ export class MessageConnection<T extends Value> {
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Responder,
       request: message,
-      responses: []
+      responses: [],
     };
     const start = hrtime();
     const requestData = message.data;
@@ -198,8 +226,9 @@ export class MessageConnection<T extends Value> {
     if (requestData === '__ping__') {
       send({
         data: '__pong__',
-        id: message.id,
-        type: MessageType.Response
+        reqId: message.reqId,
+        source: { id: this.id, info: this.info },
+        type: MessageType.Response,
       });
       return;
     }
@@ -214,31 +243,35 @@ export class MessageConnection<T extends Value> {
         for await (const responseData of result as AsyncIterableIterator<T>) {
           send({
             data: responseData,
-            id: message.id,
-            type: MessageType.Multi
+            reqId: message.reqId,
+            source: { id: this.id, info: this.info },
+            type: MessageType.Multi,
           });
         }
-        send({ id: message.id, type: MessageType.End, data: {} });
+        send({ reqId: message.reqId, source: { id: this.id, info: this.info }, type: MessageType.End, data: {} });
       } else {
         const responseData = await result;
         send({
           data: responseData as T,
-          id: message.id,
-          type: MessageType.Response
+          reqId: message.reqId,
+          source: { id: this.id, info: this.info },
+          type: MessageType.Response,
         });
       }
     } catch (err) {
       if (err instanceof Anomaly) {
         send({
           data: { message: err.message, info: err.info, requestData },
-          id: message.id,
-          type: MessageType.Anomaly
+          reqId: message.reqId,
+          source: { id: this.id, info: this.info },
+          type: MessageType.Anomaly,
         });
       } else if (err instanceof Error) {
         send({
           data: { message: err.message, requestData },
-          id: message.id,
-          type: MessageType.Error
+          reqId: message.reqId,
+          source: { id: this.id, info: this.info },
+          type: MessageType.Error,
         });
       } else {
         throw new Error('Errors should only throw instances of Error and Anomaly.');

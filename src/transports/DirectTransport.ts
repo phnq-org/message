@@ -1,5 +1,5 @@
-import { Message, MessageTransport } from '../MessageTransport';
 import { Value } from '../MessageConnection';
+import { Message, MessageTransport } from '../MessageTransport';
 
 export class DirectTransport implements MessageTransport {
   private connectedTransport: DirectTransport;

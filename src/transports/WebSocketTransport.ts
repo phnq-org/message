@@ -1,8 +1,10 @@
 import 'ws'; // need to explicitly import this so it gets loaded as a dependency
+
 import WebSocket from 'isomorphic-ws';
+
+import { Value } from '../MessageConnection';
 import { Message, MessageTransport } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
-import { Value } from '../MessageConnection';
 
 export class WebSocketTransport implements MessageTransport {
   private socket: WebSocket;

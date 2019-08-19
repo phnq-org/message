@@ -1,7 +1,7 @@
-import { ConversationPerspective, ConversationSummary, Value, MessageConnection } from '../MessageConnection';
-import { MessageType, Message } from '../MessageTransport';
-import { DirectTransport } from '../transports/DirectTransport';
 import { Anomaly } from '../errors';
+import { ConversationPerspective, ConversationSummary, MessageConnection, Value } from '../MessageConnection';
+import { Message, MessageType } from '../MessageTransport';
+import { DirectTransport } from '../transports/DirectTransport';
 
 const serverTransport = new DirectTransport();
 const serverConnection = new MessageConnection<string>(serverTransport);

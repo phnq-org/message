@@ -1,4 +1,5 @@
 import { Client, connect } from 'ts-nats';
+
 import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';

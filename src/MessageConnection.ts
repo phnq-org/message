@@ -1,9 +1,10 @@
 import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
 import hrtime from 'browser-process-hrtime';
+import uuid from 'uuid/v4';
+
 import { Anomaly } from './errors';
 import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
-import uuid from 'uuid/v4';
 
 const log = createLogger('MessageConnection');
 

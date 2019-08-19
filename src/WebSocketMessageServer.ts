@@ -2,7 +2,8 @@ import http from 'http';
 import WebSocket from 'isomorphic-ws';
 import net from 'net';
 import uuid from 'uuid/v4';
-import { Value, MessageConnection } from './MessageConnection';
+
+import { MessageConnection, Value } from './MessageConnection';
 import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;

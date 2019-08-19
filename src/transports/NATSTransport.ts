@@ -1,7 +1,8 @@
 import { Client, Subscription } from 'ts-nats';
+
+import { Value } from '../MessageConnection';
 import { Message, MessageTransport, MessageType } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
-import { Value } from '../MessageConnection';
 
 type SubjectResolver = (message: Message<Value>) => string;
 

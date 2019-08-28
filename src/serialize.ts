@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const annotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;

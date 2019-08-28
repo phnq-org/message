@@ -6,7 +6,7 @@ import uuid from 'uuid/v4';
 import { Anomaly } from './errors';
 import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
 
-const log = createLogger('MessageConnection');
+const log = createLogger('MessageConnectionDude');
 
 const idIterator = (function*(): IterableIterator<number> {
   let i = 0;

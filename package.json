@@ -33,29 +33,29 @@
   "author": "Patrick Gostovic",
   "license": "ISC",
   "devDependencies": {
-    "@types/jest": "^24.0.13",
+    "@types/jest": "^24.0.18",
     "@typescript-eslint/eslint-plugin": "^1.13.0",
     "@typescript-eslint/parser": "^1.13.0",
-    "eslint": "^6.1.0",
-    "eslint-config-prettier": "^6.0.0",
+    "eslint": "^6.4.0",
+    "eslint-config-prettier": "^6.3.0",
     "eslint-plugin-prettier": "^3.1.0",
     "eslint-plugin-simple-import-sort": "^4.0.0",
-    "jest": "^24.8.0",
+    "jest": "^24.9.0",
     "prettier": "^1.18.2",
-    "rimraf": "^2.6.3",
-    "ts-jest": "^24.0.2",
-    "ts-node": "^8.3.0",
-    "typescript": "^3.2.2"
+    "rimraf": "^2.7.1",
+    "ts-jest": "^24.1.0",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.3"
   },
   "dependencies": {
-    "@phnq/log": "^1.1.3",
-    "@phnq/streams": "^1.1.0",
+    "@phnq/log": "^1.1.4",
+    "@phnq/streams": "^1.1.3",
     "@types/uuid": "^3.4.5",
-    "@types/ws": "^6.0.2",
+    "@types/ws": "^6.0.3",
     "browser-process-hrtime": "^1.0.0",
     "isomorphic-ws": "^4.0.1",
     "ts-nats": "^1.2.4",
-    "uuid": "^3.3.2",
-    "ws": "^7.1.1"
+    "uuid": "^3.3.3",
+    "ws": "^7.1.2"
   }
 }

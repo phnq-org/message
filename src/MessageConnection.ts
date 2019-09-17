@@ -63,24 +63,28 @@ export class MessageConnection<T extends Value> {
         return;
       }
 
+      /**
+       * It is, in fact, possible to receive messages that are not intended for
+       * this MessageConnection instance. This is because multiple connections
+       * may share a single MessageTransport; in this case, they will all receive
+       * every incoming message. Since request ids are assigned by the global
+       * idIterator, there is a zero collision guarantee.
+       */
       const responseQueue = this.responseQueues.get(message.reqId);
-      if (!responseQueue) {
-        log.warn('No response queue for message: %s', JSON.stringify(message));
-        return;
-      }
+      if (responseQueue) {
+        switch (message.type) {
+          case MessageType.Response:
+          case MessageType.Anomaly:
+          case MessageType.Error:
+          case MessageType.End:
+            responseQueue.enqueue(message as Message<T>);
+            responseQueue.flush();
+            break;
 
-      switch (message.type) {
-        case MessageType.Response:
-        case MessageType.Anomaly:
-        case MessageType.Error:
-        case MessageType.End:
-          responseQueue.enqueue(message as Message<T>);
-          responseQueue.flush();
-          break;
-
-        case MessageType.Multi:
-          responseQueue.enqueue(message as Message<T>);
-          break;
+          case MessageType.Multi:
+            responseQueue.enqueue(message as Message<T>);
+            break;
+        }
       }
     });
   }
@@ -251,7 +255,7 @@ export class MessageConnection<T extends Value> {
         }
         send({ reqId: message.reqId, source: { id: this.id, info: this.info }, type: MessageType.End, data: {} });
       } else {
-        const responseData = await result;
+        const responseData = result;
         send({
           data: responseData as T,
           reqId: message.reqId,

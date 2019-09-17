@@ -102,13 +102,13 @@ export class MessageConnection<T extends Value> {
     await this.requestOne(data);
   }
 
-  public async requestOne(data: T): Promise<Value> {
+  public async requestOne(data: T): Promise<T> {
     const resp = await this.request(data);
 
     if (typeof resp === 'object' && (resp as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
       const resps: T[] = [];
 
-      for await (const r of await (resp as AsyncIterableIterator<T>)) {
+      for await (const r of resp as AsyncIterableIterator<T>) {
         resps.push(r);
       }
 

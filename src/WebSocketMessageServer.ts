@@ -50,20 +50,23 @@ export class WebSocketMessageServer<T extends Value> {
       }
     });
 
-    this.wss.on('connection', (socket: WebSocket, req: http.IncomingMessage): void => {
-      const connection = new MessageConnection<T>(new WebSocketTransport(socket));
+    this.wss.on(
+      'connection',
+      async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
+        const connection = new MessageConnection<T>(new WebSocketTransport(socket));
 
-      const connectionId = uuid();
+        const connectionId = uuid();
 
-      if (this.connectHandler) {
-        this.connectHandler(connectionId, req);
-      }
+        if (this.connectHandler) {
+          await this.connectHandler(connectionId, req);
+        }
 
-      this.connections.set(connectionId, connection);
+        this.connections.set(connectionId, connection);
 
-      connection.onReceive(
-        (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message),
-      );
-    });
+        connection.onReceive(
+          (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message),
+        );
+      },
+    );
   }
 }

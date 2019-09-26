@@ -8,20 +8,26 @@ import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
 
+type ConnectHandler = (connectionId: ConnectionId, upgradeRequest: http.IncomingMessage) => Promise<void>;
+type ReceiveHandler<T> = (connectionId: ConnectionId, message: T) => Promise<T | AsyncIterableIterator<T>>;
+
 interface Config<T> {
   httpServer: http.Server;
-  onReceive: (connectionId: ConnectionId, message: T) => Promise<T | AsyncIterableIterator<T>>;
+  onConnect?: ConnectHandler;
+  onReceive: ReceiveHandler<T>;
   path?: string;
 }
 
 export class WebSocketMessageServer<T extends Value> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
-  private receiveHandler: (connectionId: ConnectionId, message: T) => Promise<T | AsyncIterableIterator<T>>;
+  private connectHandler?: ConnectHandler;
+  private receiveHandler: ReceiveHandler<T>;
   private connections = new Map<ConnectionId, MessageConnection<T>>();
 
-  public constructor({ httpServer, onReceive, path = '/' }: Config<T>) {
+  public constructor({ httpServer, onConnect, onReceive, path = '/' }: Config<T>) {
     this.httpServer = httpServer;
+    this.connectHandler = onConnect;
     this.receiveHandler = onReceive;
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path);
@@ -44,10 +50,14 @@ export class WebSocketMessageServer<T extends Value> {
       }
     });
 
-    this.wss.on('connection', (socket: WebSocket): void => {
+    this.wss.on('connection', (socket: WebSocket, req: http.IncomingMessage): void => {
       const connection = new MessageConnection<T>(new WebSocketTransport(socket));
 
       const connectionId = uuid();
+
+      if (this.connectHandler) {
+        this.connectHandler(connectionId, req);
+      }
 
       this.connections.set(connectionId, connection);
 

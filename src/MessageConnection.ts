@@ -48,7 +48,7 @@ const DEFAULT_RESPONSE_TIMEOUT = 5000;
 export class MessageConnection<T extends Value> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
-  public info?: Value;
+  public sourceInfo?: Value; // optional data bag that gets attached to every outgoing message
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T>>;
@@ -149,7 +149,7 @@ export class MessageConnection<T extends Value> {
       type: MessageType.Send,
       reqId,
       data,
-      source: { id: this.id, info: this.info },
+      source: { id: this.id, info: this.sourceInfo },
     };
 
     const conversation: ConversationSummary = {
@@ -232,7 +232,7 @@ export class MessageConnection<T extends Value> {
       send({
         data: '__pong__',
         reqId: message.reqId,
-        source: { id: this.id, info: this.info },
+        source: { id: this.id, info: this.sourceInfo },
         type: MessageType.Response,
       });
       return;
@@ -249,17 +249,17 @@ export class MessageConnection<T extends Value> {
           send({
             data: responseData,
             reqId: message.reqId,
-            source: { id: this.id, info: this.info },
+            source: { id: this.id, info: this.sourceInfo },
             type: MessageType.Multi,
           });
         }
-        send({ reqId: message.reqId, source: { id: this.id, info: this.info }, type: MessageType.End, data: {} });
+        send({ reqId: message.reqId, source: { id: this.id, info: this.sourceInfo }, type: MessageType.End, data: {} });
       } else {
         const responseData = result;
         send({
           data: responseData as T,
           reqId: message.reqId,
-          source: { id: this.id, info: this.info },
+          source: { id: this.id, info: this.sourceInfo },
           type: MessageType.Response,
         });
       }
@@ -268,14 +268,14 @@ export class MessageConnection<T extends Value> {
         send({
           data: { message: err.message, info: err.info, requestData },
           reqId: message.reqId,
-          source: { id: this.id, info: this.info },
+          source: { id: this.id, info: this.sourceInfo },
           type: MessageType.Anomaly,
         });
       } else if (err instanceof Error) {
         send({
           data: { message: err.message, requestData },
           reqId: message.reqId,
-          source: { id: this.id, info: this.info },
+          source: { id: this.id, info: this.sourceInfo },
           type: MessageType.Error,
         });
       } else {

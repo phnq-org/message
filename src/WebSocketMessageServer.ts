@@ -57,15 +57,15 @@ export class WebSocketMessageServer<T extends Value> {
 
         const connectionId = uuid();
 
-        if (this.connectHandler) {
-          await this.connectHandler(connectionId, req);
-        }
-
         this.connections.set(connectionId, connection);
 
         connection.onReceive(
           (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message),
         );
+
+        if (this.connectHandler) {
+          await this.connectHandler(connectionId, req);
+        }
       },
     );
   }

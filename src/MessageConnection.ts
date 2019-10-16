@@ -19,10 +19,10 @@ const possiblyThrow = (message: Message<Value>): void => {
   switch (message.type) {
     case MessageType.Anomaly:
       const anomalyMessage = message as AnomalyMessage;
-      throw new Anomaly(anomalyMessage.data.message, anomalyMessage.data.info);
+      throw new Anomaly(anomalyMessage.payload.message, anomalyMessage.payload.info);
 
     case MessageType.Error:
-      throw new Error((message as ErrorMessage).data.message);
+      throw new Error((message as ErrorMessage).payload.message);
   }
 };
 
@@ -48,7 +48,6 @@ const DEFAULT_RESPONSE_TIMEOUT = 5000;
 export class MessageConnection<T extends Value> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
-  public sourceInfo?: Value; // optional data bag that gets attached to every outgoing message
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T>>;
@@ -70,7 +69,7 @@ export class MessageConnection<T extends Value> {
        * every incoming message. Since request ids are assigned by the global
        * idIterator, there is a zero collision guarantee.
        */
-      const responseQueue = this.responseQueues.get(message.reqId);
+      const responseQueue = this.responseQueues.get(message.requestId);
       if (responseQueue) {
         switch (message.type) {
           case MessageType.Response:
@@ -141,16 +140,12 @@ export class MessageConnection<T extends Value> {
     return this.doRequest(data) as Promise<AsyncIterableIterator<T> | T>;
   }
 
-  private async doRequest(data: Value): Promise<AsyncIterableIterator<Value> | Value> {
+  private async doRequest(payload: Value): Promise<AsyncIterableIterator<Value> | Value> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
+    const sourceId = this.id;
 
-    const requestMessage: Message<Value> = {
-      type: MessageType.Send,
-      reqId,
-      data,
-      source: { id: this.id, info: this.sourceInfo },
-    };
+    const requestMessage: Message<Value> = { type: MessageType.Send, requestId: reqId, payload, sourceId };
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
@@ -173,19 +168,19 @@ export class MessageConnection<T extends Value> {
 
     if (firstMsg.type === MessageType.Multi) {
       return (async function*(): AsyncIterableIterator<T> {
-        yield firstMsg.data;
+        yield firstMsg.payload;
         try {
           for await (const message of responseQueue.iterator()) {
-            if (message.source.id === firstMsg.source.id) {
+            if (message.sourceId === firstMsg.sourceId) {
               conversation.responses.push({ message, time: hrtime(start) });
               possiblyThrow(message);
               if (message.type === MessageType.Multi) {
-                yield message.data;
+                yield message.payload;
               }
             } else {
               log.warn(
                 'Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s',
-                JSON.stringify(data),
+                JSON.stringify(payload),
               );
             }
           }
@@ -202,7 +197,7 @@ export class MessageConnection<T extends Value> {
         conversationHandler(conversation);
       }
       possiblyThrow(firstMsg);
-      return firstMsg.data;
+      return firstMsg.payload;
     }
   }
 
@@ -215,26 +210,22 @@ export class MessageConnection<T extends Value> {
   }
 
   private async handleReceive(message: Message<T>): Promise<void> {
+    const sourceId = this.id;
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Responder,
       request: message,
       responses: [],
     };
     const start = hrtime();
-    const requestData = message.data;
+    const requestPayload = message.payload;
 
     const send = (m: Message<Value>): void => {
       this.transport.send(m);
       conversation.responses.push({ message: m, time: hrtime(start) });
     };
 
-    if (requestData === '__ping__') {
-      send({
-        data: '__pong__',
-        reqId: message.reqId,
-        source: { id: this.id, info: this.sourceInfo },
-        type: MessageType.Response,
-      });
+    if (requestPayload === '__ping__') {
+      send({ payload: '__pong__', requestId: message.requestId, sourceId, type: MessageType.Response });
       return;
     }
 
@@ -243,41 +234,33 @@ export class MessageConnection<T extends Value> {
     }
 
     try {
-      const result = await this.receiveHandler(requestData);
+      const result = await this.receiveHandler(requestPayload);
       if (typeof result === 'object' && (result as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
-        for await (const responseData of result as AsyncIterableIterator<T>) {
-          send({
-            data: responseData,
-            reqId: message.reqId,
-            source: { id: this.id, info: this.sourceInfo },
-            type: MessageType.Multi,
-          });
+        for await (const responsePayload of result as AsyncIterableIterator<T>) {
+          send({ payload: responsePayload, requestId: message.requestId, sourceId, type: MessageType.Multi });
         }
-        send({ reqId: message.reqId, source: { id: this.id, info: this.sourceInfo }, type: MessageType.End, data: {} });
+        send({ requestId: message.requestId, sourceId, type: MessageType.End, payload: {} });
       } else {
-        const responseData = result;
-        send({
-          data: responseData as T,
-          reqId: message.reqId,
-          source: { id: this.id, info: this.sourceInfo },
-          type: MessageType.Response,
-        });
+        const responsePayload = result;
+        send({ payload: responsePayload as T, requestId: message.requestId, sourceId, type: MessageType.Response });
       }
     } catch (err) {
       if (err instanceof Anomaly) {
-        send({
-          data: { message: err.message, info: err.info, requestData },
-          reqId: message.reqId,
-          source: { id: this.id, info: this.sourceInfo },
+        const anomalyMessage: AnomalyMessage = {
+          payload: { message: err.message, info: err.info, requestPayload },
+          requestId: message.requestId,
+          sourceId,
           type: MessageType.Anomaly,
-        });
+        };
+        send(anomalyMessage);
       } else if (err instanceof Error) {
-        send({
-          data: { message: err.message, requestData },
-          reqId: message.reqId,
-          source: { id: this.id, info: this.sourceInfo },
+        const errorMessage: ErrorMessage = {
+          payload: { message: err.message, requestPayload },
+          requestId: message.requestId,
+          sourceId,
           type: MessageType.Error,
-        });
+        };
+        send(errorMessage);
       } else {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
       }

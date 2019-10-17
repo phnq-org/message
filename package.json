@@ -24,6 +24,8 @@
     "clean": "rimraf dist",
     "test": "jest",
     "lint": "tsc --noEmit && eslint 'src/**/*.{js,ts,tsx}' --quiet --fix",
+    "pretest": "docker run -d --name nats_phnq_message_test -p 4223:4222 nats",
+    "posttest": "docker stop nats_phnq_message_test; docker rm nats_phnq_message_test",
     "test:coverage": "jest --testPathIgnorePatterns=NATS --coverage",
     "release:patch": "npm version patch; git push; npm run dist; cd dist; npm publish",
     "release:minor": "npm version minor; git push; npm run dist; cd dist; npm publish"

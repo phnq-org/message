@@ -11,7 +11,7 @@ describe('NATSTransport', (): void => {
 
   beforeAll(
     async (): Promise<void> => {
-      nc = await connect();
+      nc = await connect({ servers: ['nats://localhost:4223'] });
       clientConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] }),
       );

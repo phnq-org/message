@@ -37,8 +37,8 @@ export class NATSTransport implements MessageTransport {
     const publishSubject = this.options.publishSubject;
 
     let subject: string | undefined;
-    if (message.type === MessageType.End) {
-      subject = this.subjectById.get(message.requestId);
+    if (message.t === MessageType.End) {
+      subject = this.subjectById.get(message.c);
     } else {
       subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
     }
@@ -47,10 +47,10 @@ export class NATSTransport implements MessageTransport {
       throw new Error('Could not get subject');
     }
 
-    if (message.type === MessageType.End) {
-      this.subjectById.delete(message.requestId);
+    if (message.t === MessageType.End) {
+      this.subjectById.delete(message.c);
     } else {
-      this.subjectById.set(message.requestId, subject);
+      this.subjectById.set(message.c, subject);
     }
 
     if (logTraffic) {

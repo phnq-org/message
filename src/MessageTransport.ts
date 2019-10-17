@@ -10,18 +10,18 @@ export enum MessageType {
 }
 
 export interface Message<T extends Value> {
-  type: MessageType;
-  requestId: number;
-  sourceId: string;
-  payload: T;
+  t: MessageType;
+  c: number;
+  s: string;
+  p: T;
 }
 
 export interface AnomalyMessage extends Message<{ message: string; info: Value; requestPayload: Value }> {
-  type: MessageType.Anomaly;
+  t: MessageType.Anomaly;
 }
 
 export interface ErrorMessage extends Message<{ message: string; requestPayload: Value }> {
-  type: MessageType.Error;
+  t: MessageType.Error;
 }
 
 export interface MessageTransport {

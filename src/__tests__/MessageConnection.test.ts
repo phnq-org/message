@@ -251,10 +251,10 @@ describe('MessageConnection', (): void => {
         );
 
         expect(serverConvSummary.responses.length).toBe(4);
-        expect(serverConvSummary.responses[0].message.type).toBe(MessageType.Multi);
-        expect(serverConvSummary.responses[1].message.type).toBe(MessageType.Multi);
-        expect(serverConvSummary.responses[2].message.type).toBe(MessageType.Multi);
-        expect(serverConvSummary.responses[3].message.type).toBe(MessageType.End);
+        expect(serverConvSummary.responses[0].message.t).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[1].message.t).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[2].message.t).toBe(MessageType.Multi);
+        expect(serverConvSummary.responses[3].message.t).toBe(MessageType.End);
       }
     });
   });

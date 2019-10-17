@@ -16,13 +16,13 @@ const idIterator = (function*(): IterableIterator<number> {
 })();
 
 const possiblyThrow = (message: Message<Value>): void => {
-  switch (message.type) {
+  switch (message.t) {
     case MessageType.Anomaly:
       const anomalyMessage = message as AnomalyMessage;
-      throw new Anomaly(anomalyMessage.payload.message, anomalyMessage.payload.info);
+      throw new Anomaly(anomalyMessage.p.message, anomalyMessage.p.info);
 
     case MessageType.Error:
-      throw new Error((message as ErrorMessage).payload.message);
+      throw new Error((message as ErrorMessage).p.message);
   }
 };
 
@@ -57,7 +57,7 @@ export class MessageConnection<T extends Value> {
     this.transport = transport;
 
     transport.onReceive((message): void => {
-      if (message.type === MessageType.Send) {
+      if (message.t === MessageType.Send) {
         this.handleReceive(message as Message<T>);
         return;
       }
@@ -69,9 +69,9 @@ export class MessageConnection<T extends Value> {
        * every incoming message. Since request ids are assigned by the global
        * idIterator, there is a zero collision guarantee.
        */
-      const responseQueue = this.responseQueues.get(message.requestId);
+      const responseQueue = this.responseQueues.get(message.c);
       if (responseQueue) {
-        switch (message.type) {
+        switch (message.t) {
           case MessageType.Response:
           case MessageType.Anomaly:
           case MessageType.Error:
@@ -143,9 +143,9 @@ export class MessageConnection<T extends Value> {
   private async doRequest(payload: Value): Promise<AsyncIterableIterator<Value> | Value> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
-    const sourceId = this.id;
+    const source = this.id;
 
-    const requestMessage: Message<Value> = { type: MessageType.Send, requestId: reqId, payload, sourceId };
+    const requestMessage: Message<Value> = { t: MessageType.Send, c: reqId, p: payload, s: source };
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
@@ -161,21 +161,21 @@ export class MessageConnection<T extends Value> {
     await this.transport.send(requestMessage);
 
     const iter = responseQueue.iterator();
-    const firstMsg = (await iter.next()).value;
+    const firstMsg = (await iter.next()).value as Message<T>;
     conversation.responses.push({ message: firstMsg, time: hrtime(start) });
 
     const conversationHandler = this.conversationHandler;
 
-    if (firstMsg.type === MessageType.Multi) {
+    if (firstMsg.t === MessageType.Multi) {
       return (async function*(): AsyncIterableIterator<T> {
-        yield firstMsg.payload;
+        yield firstMsg.p;
         try {
           for await (const message of responseQueue.iterator()) {
-            if (message.sourceId === firstMsg.sourceId) {
+            if (message.s === firstMsg.s) {
               conversation.responses.push({ message, time: hrtime(start) });
               possiblyThrow(message);
-              if (message.type === MessageType.Multi) {
-                yield message.payload;
+              if (message.t === MessageType.Multi) {
+                yield message.p;
               }
             } else {
               log.warn(
@@ -197,7 +197,7 @@ export class MessageConnection<T extends Value> {
         conversationHandler(conversation);
       }
       possiblyThrow(firstMsg);
-      return firstMsg.payload;
+      return firstMsg.p;
     }
   }
 
@@ -210,14 +210,14 @@ export class MessageConnection<T extends Value> {
   }
 
   private async handleReceive(message: Message<T>): Promise<void> {
-    const sourceId = this.id;
+    const source = this.id;
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Responder,
       request: message,
       responses: [],
     };
     const start = hrtime();
-    const requestPayload = message.payload;
+    const requestPayload = message.p;
 
     const send = (m: Message<Value>): void => {
       this.transport.send(m);
@@ -225,7 +225,7 @@ export class MessageConnection<T extends Value> {
     };
 
     if (requestPayload === '__ping__') {
-      send({ payload: '__pong__', requestId: message.requestId, sourceId, type: MessageType.Response });
+      send({ p: '__pong__', c: message.c, s: source, t: MessageType.Response });
       return;
     }
 
@@ -237,28 +237,28 @@ export class MessageConnection<T extends Value> {
       const result = await this.receiveHandler(requestPayload);
       if (typeof result === 'object' && (result as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
         for await (const responsePayload of result as AsyncIterableIterator<T>) {
-          send({ payload: responsePayload, requestId: message.requestId, sourceId, type: MessageType.Multi });
+          send({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
         }
-        send({ requestId: message.requestId, sourceId, type: MessageType.End, payload: {} });
+        send({ c: message.c, s: source, t: MessageType.End, p: {} });
       } else {
         const responsePayload = result;
-        send({ payload: responsePayload as T, requestId: message.requestId, sourceId, type: MessageType.Response });
+        send({ p: responsePayload as T, c: message.c, s: source, t: MessageType.Response });
       }
     } catch (err) {
       if (err instanceof Anomaly) {
         const anomalyMessage: AnomalyMessage = {
-          payload: { message: err.message, info: err.info, requestPayload },
-          requestId: message.requestId,
-          sourceId,
-          type: MessageType.Anomaly,
+          p: { message: err.message, info: err.info, requestPayload },
+          c: message.c,
+          s: source,
+          t: MessageType.Anomaly,
         };
         send(anomalyMessage);
       } else if (err instanceof Error) {
         const errorMessage: ErrorMessage = {
-          payload: { message: err.message, requestPayload },
-          requestId: message.requestId,
-          sourceId,
-          type: MessageType.Error,
+          p: { message: err.message, requestPayload },
+          c: message.c,
+          s: source,
+          t: MessageType.Error,
         };
         send(errorMessage);
       } else {

@@ -21,17 +21,17 @@ Messages are passed as JSON. For example:
 
 ```json
 {
-  "type": "send",
-  "requestId": 1,
-  "sourceId": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
-  "payload": { "greeting": "Hello" }
+  "t": "send",
+  "c": 1,
+  "s": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
+  "p": { "greeting": "Hello" }
 }
 ```
 
-- **type** - one of `send`, `error`, `anomaly`, `response`, `multi`, `end`
-- **requestId** - identifies the "conversation"
-- **sourceId** - unique id that identifies the message agent
-- **payload** - the data being sent to another agent
+- **t** - type, one of `send`, `error`, `anomaly`, `response`, `multi`, `end`
+- **c** - conversation, for grouping multiple messages together
+- **s** - source, unique id that identifies the agent sending the message
+- **p** - payload, the data being sent to another agent
 
 
 ### Conversation
@@ -43,20 +43,20 @@ A single, non-error response will be of type `response`. For example:
 Request:
 ```json
 {
-  "type": "send",
-  "requestId": 1,
-  "sourceId": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
-  "payload": { "question": "How are you?" }
+  "t": "send",
+  "c": 1,
+  "s": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
+  "p": { "question": "How are you?" }
 }
 ```
 
 Response:
 ```json
 {
-  "type": "response",
-  "requestId": 1,
-  "sourceId": "13c5a54d-4e25-478b-a6be-295be08e8f01",
-  "payload": { "answer": "I'm fine." }
+  "t": "response",
+  "c": 1,
+  "s": "13c5a54d-4e25-478b-a6be-295be08e8f01",
+  "p": { "answer": "I'm fine." }
 }
 ```
 
@@ -66,10 +66,10 @@ Multiple responses will consist of payload-carrying messages with the type `mult
 Request:
 ```json
 {
-  "type": "send",
-  "requestId": 2,
-  "sourceId": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
-  "payload": {
+  "t": "send",
+  "c": 2,
+  "s": "2dbb50ed-2cd6-4fe3-af79-baf5cd643ce3",
+  "p": {
     "question": "What are the names of your pets?"
   }
 }
@@ -78,34 +78,34 @@ Request:
 Responses:
 ```json
 {
-  "type": "multi",
-  "requestId": 2,
-  "sourceId": "13c5a54d-4e25-478b-a6be-295be08e8f01",
-  "payload": { "dog": "Fido" }
+  "t": "multi",
+  "c": 2,
+  "s": "13c5a54d-4e25-478b-a6be-295be08e8f01",
+  "p": { "dog": "Fido" }
 }
 ```
 ```json
 {
-  "type": "multi",
-  "requestId": 2,
-  "sourceId": "13c5a54d-4e25-478b-a6be-295be08e8f01",
-  "payload": { "cat": "Fritz" }
+  "t": "multi",
+  "c": 2,
+  "s": "13c5a54d-4e25-478b-a6be-295be08e8f01",
+  "p": { "cat": "Fritz" }
 }
 ```
 ```json
 {
-  "type": "multi",
-  "requestId": 2,
-  "sourceId": "13c5a54d-4e25-478b-a6be-295be08e8f01",
-  "payload": { "fish": "Fred" }
+  "t": "multi",
+  "c": 2,
+  "s": "13c5a54d-4e25-478b-a6be-295be08e8f01",
+  "p": { "fish": "Fred" }
 }
 ```
 ```json
 {
-  "type": "end",
-  "requestId": 2,
-  "sourceId": "13c5a54d-4e25-478b-a6be-295be08e8f01",
-  "payload": {}
+  "t": "end",
+  "c": 2,
+  "s": "13c5a54d-4e25-478b-a6be-295be08e8f01",
+  "p": {}
 }
 ```
 

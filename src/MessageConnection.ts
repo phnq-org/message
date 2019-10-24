@@ -50,7 +50,7 @@ export class MessageConnection<T extends Value> {
   private connId = uuid();
   private transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
-  private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T>>;
+  private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   private conversationHandler?: (c: ConversationSummary) => void;
 
   public constructor(transport: MessageTransport) {
@@ -93,20 +93,15 @@ export class MessageConnection<T extends Value> {
   }
 
   public async ping(): Promise<boolean> {
-    return (await this.doRequest('__ping__')) === '__pong__';
+    return (await this.doRequest('__ping__', true)) === '__pong__';
   }
 
-  /**
-   * Note: this will yield a response of undefined even if the handler
-   * returns nothing. The caller can ignore the response for a "fire and forget"
-   * interaction.
-   */
   public async send(data: T): Promise<void> {
-    await this.requestOne(data);
+    await this.requestOne(data, false);
   }
 
-  public async requestOne(data: T): Promise<T> {
-    const resp = await this.request(data);
+  public async requestOne(data: T, expectResponse = true): Promise<T> {
+    const resp = await this.request(data, expectResponse);
 
     if (typeof resp === 'object' && (resp as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
       const resps: T[] = [];
@@ -136,11 +131,14 @@ export class MessageConnection<T extends Value> {
     }
   }
 
-  public async request(data: T): Promise<AsyncIterableIterator<T> | T> {
-    return this.doRequest(data) as Promise<AsyncIterableIterator<T> | T>;
+  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<T> | T> {
+    return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<T> | T>;
   }
 
-  private async doRequest(payload: Value): Promise<AsyncIterableIterator<Value> | Value> {
+  private async doRequest(
+    payload: Value,
+    expectResponse: boolean,
+  ): Promise<AsyncIterableIterator<Value> | Value | undefined> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
     const source = this.id;
@@ -155,53 +153,58 @@ export class MessageConnection<T extends Value> {
     const start = hrtime();
 
     const responseQueue = new AsyncQueue<Message<T>>();
-    responseQueue.maxWaitTime = this.responseTimeout;
-    responseQueues.set(reqId, responseQueue);
+
+    if (expectResponse) {
+      responseQueue.maxWaitTime = this.responseTimeout;
+      responseQueues.set(reqId, responseQueue);
+    }
 
     await this.transport.send(requestMessage);
 
-    const iter = responseQueue.iterator();
-    const firstMsg = (await iter.next()).value as Message<T>;
-    conversation.responses.push({ message: firstMsg, time: hrtime(start) });
+    if (expectResponse) {
+      const iter = responseQueue.iterator();
+      const firstMsg = (await iter.next()).value as Message<T>;
+      conversation.responses.push({ message: firstMsg, time: hrtime(start) });
 
-    const conversationHandler = this.conversationHandler;
+      const conversationHandler = this.conversationHandler;
 
-    if (firstMsg.t === MessageType.Multi) {
-      return (async function*(): AsyncIterableIterator<T> {
-        yield firstMsg.p;
-        try {
-          for await (const message of responseQueue.iterator()) {
-            if (message.s === firstMsg.s) {
-              conversation.responses.push({ message, time: hrtime(start) });
-              possiblyThrow(message);
-              if (message.t === MessageType.Multi) {
-                yield message.p;
+      if (firstMsg.t === MessageType.Multi) {
+        return (async function*(): AsyncIterableIterator<T> {
+          yield firstMsg.p;
+          try {
+            for await (const message of responseQueue.iterator()) {
+              if (message.s === firstMsg.s) {
+                conversation.responses.push({ message, time: hrtime(start) });
+                possiblyThrow(message);
+                if (message.t === MessageType.Multi) {
+                  yield message.p;
+                }
+              } else {
+                log.warn(
+                  'Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s',
+                  JSON.stringify(payload),
+                );
               }
-            } else {
-              log.warn(
-                'Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s',
-                JSON.stringify(payload),
-              );
             }
+            if (conversationHandler) {
+              conversationHandler(conversation);
+            }
+          } finally {
+            responseQueues.delete(reqId);
           }
-          if (conversationHandler) {
-            conversationHandler(conversation);
-          }
-        } finally {
-          responseQueues.delete(reqId);
+        })();
+      } else {
+        responseQueues.delete(reqId);
+        if (conversationHandler) {
+          conversationHandler(conversation);
         }
-      })();
-    } else {
-      responseQueues.delete(reqId);
-      if (conversationHandler) {
-        conversationHandler(conversation);
+        possiblyThrow(firstMsg);
+        return firstMsg.p;
       }
-      possiblyThrow(firstMsg);
-      return firstMsg.p;
     }
   }
 
-  public onReceive(receiveHandler: (value: T) => Promise<T | AsyncIterableIterator<T>>): void {
+  public onReceive(receiveHandler: (value: T) => Promise<T | AsyncIterableIterator<T> | void>): void {
     this.receiveHandler = receiveHandler;
   }
 
@@ -240,9 +243,11 @@ export class MessageConnection<T extends Value> {
           send({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
         }
         send({ c: message.c, s: source, t: MessageType.End, p: {} });
-      } else {
+      } else if (result) {
         const responsePayload = result;
         send({ p: responsePayload as T, c: message.c, s: source, t: MessageType.Response });
+      } else {
+        // kill the async queue
       }
     } catch (err) {
       if (err instanceof Anomaly) {

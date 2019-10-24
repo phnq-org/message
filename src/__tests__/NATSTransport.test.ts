@@ -4,6 +4,11 @@ import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';
 
+const wait = (millis: number = 0): Promise<void> =>
+  new Promise(resolve => {
+    setTimeout(resolve, millis);
+  });
+
 describe('NATSTransport', (): void => {
   let nc: Client;
   let clientConnection: MessageConnection<string | undefined>;
@@ -119,6 +124,8 @@ describe('NATSTransport', (): void => {
 
       await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
 
+      await wait(100);
+
       expect(serverReceive).toHaveBeenCalledWith('one way');
       expect(clientReceive).toHaveBeenCalledWith('or another');
     });
@@ -159,8 +166,3 @@ describe('NATSTransport', (): void => {
     });
   });
 });
-
-// const wait = (millis: number = 0) =>
-//   new Promise(resolve => {
-//     setTimeout(resolve, millis);
-//   });

@@ -1,7 +1,6 @@
 import { createLogger } from '@phnq/log';
 import { Client, Subscription } from 'ts-nats';
 
-import { Value } from '../MessageConnection';
 import { Message, MessageTransport, MessageType } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
@@ -9,7 +8,7 @@ const log = createLogger('NATSTransport');
 
 const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === '1';
 
-type SubjectResolver = (message: Message<Value>) => string;
+type SubjectResolver = (message: Message) => string;
 
 interface NATSTransportOptions {
   subscriptions: string[];
@@ -25,7 +24,7 @@ export class NATSTransport implements MessageTransport {
 
   private nc: Client;
   private options: NATSTransportOptions;
-  private receiveHandler?: (message: Message<Value>) => void;
+  private receiveHandler?: (message: Message) => void;
   private subjectById = new Map<number, string>();
 
   private constructor(nc: Client, options: NATSTransportOptions) {
@@ -33,7 +32,7 @@ export class NATSTransport implements MessageTransport {
     this.options = options;
   }
 
-  public async send(message: Message<Value>): Promise<void> {
+  public async send(message: Message): Promise<void> {
     const publishSubject = this.options.publishSubject;
 
     let subject: string | undefined;
@@ -60,7 +59,7 @@ export class NATSTransport implements MessageTransport {
     await this.nc.publish(subject, serialize(message));
   }
 
-  public onReceive(receiveHandler: (message: Message<Value>) => void): void {
+  public onReceive(receiveHandler: (message: Message) => void): void {
     this.receiveHandler = receiveHandler;
   }
 

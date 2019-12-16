@@ -1,5 +1,3 @@
-import { Value } from './MessageConnection';
-
 export enum MessageType {
   Send = 'send',
   Error = 'error',
@@ -9,22 +7,22 @@ export enum MessageType {
   End = 'end',
 }
 
-export interface Message<T extends Value> {
+export interface Message<T = unknown> {
   t: MessageType;
   c: number;
   s: string;
   p: T;
 }
 
-export interface AnomalyMessage extends Message<{ message: string; info: Value; requestPayload: Value }> {
+export interface AnomalyMessage extends Message<{ message: string; info: unknown; requestPayload: unknown }> {
   t: MessageType.Anomaly;
 }
 
-export interface ErrorMessage extends Message<{ message: string; requestPayload: Value }> {
+export interface ErrorMessage extends Message<{ message: string; requestPayload: unknown }> {
   t: MessageType.Error;
 }
 
 export interface MessageTransport {
-  send(message: Message<Value>): Promise<void>;
-  onReceive(receive: (message: Message<Value>) => void): void;
+  send(message: Message): Promise<void>;
+  onReceive(receive: (message: Message) => void): void;
 }

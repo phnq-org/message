@@ -15,7 +15,7 @@ const idIterator = (function*(): IterableIterator<number> {
   }
 })();
 
-const possiblyThrow = (message: Message<Value>): void => {
+const possiblyThrow = (message: Message): void => {
   switch (message.t) {
     case MessageType.Anomaly:
       const anomalyMessage = message as AnomalyMessage;
@@ -26,12 +26,6 @@ const possiblyThrow = (message: Message<Value>): void => {
   }
 };
 
-export type Value = string | number | boolean | Date | Data | undefined;
-
-export interface Data {
-  [key: string]: Value | Value[];
-}
-
 export enum ConversationPerspective {
   Requester = 'requester',
   Responder = 'responder',
@@ -39,13 +33,13 @@ export enum ConversationPerspective {
 
 export interface ConversationSummary {
   perspective: ConversationPerspective;
-  request: Message<Value>;
-  responses: { message: Message<Value>; time: [number, number] }[];
+  request: Message;
+  responses: { message: Message; time: [number, number] }[];
 }
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
-export class MessageConnection<T extends Value> {
+export class MessageConnection<T = unknown> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
   private transport: MessageTransport;
@@ -92,10 +86,6 @@ export class MessageConnection<T extends Value> {
     return this.connId;
   }
 
-  public async ping(): Promise<boolean> {
-    return (await this.doRequest('__ping__', true)) === '__pong__';
-  }
-
   public async send(data: T): Promise<void> {
     await this.requestOne(data, false);
   }
@@ -135,15 +125,12 @@ export class MessageConnection<T extends Value> {
     return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<T> | T>;
   }
 
-  private async doRequest(
-    payload: Value,
-    expectResponse: boolean,
-  ): Promise<AsyncIterableIterator<Value> | Value | undefined> {
+  private async doRequest(payload: T, expectResponse: boolean): Promise<AsyncIterableIterator<T> | T | undefined> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
     const source = this.id;
 
-    const requestMessage: Message<Value> = { t: MessageType.Send, c: reqId, p: payload, s: source };
+    const requestMessage: Message<T> = { t: MessageType.Send, c: reqId, p: payload, s: source };
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
@@ -222,15 +209,10 @@ export class MessageConnection<T extends Value> {
     const start = hrtime();
     const requestPayload = message.p;
 
-    const send = (m: Message<Value>): void => {
+    const send = (m: Message): void => {
       this.transport.send(m);
       conversation.responses.push({ message: m, time: hrtime(start) });
     };
-
-    if (requestPayload === '__ping__') {
-      send({ p: '__pong__', c: message.c, s: source, t: MessageType.Response });
-      return;
-    }
 
     if (!this.receiveHandler) {
       throw new Error('No receive handler set.');

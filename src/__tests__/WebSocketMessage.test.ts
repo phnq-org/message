@@ -1,6 +1,6 @@
 import http from 'http';
 
-import { Value, WebSocketMessageClient } from '../index.client';
+import { WebSocketMessageClient } from '../index.client';
 import { WebSocketMessageServer } from '../index.server';
 import { MessageConnection } from '../MessageConnection';
 import { ConnectionId } from '../WebSocketMessageServer';
@@ -15,8 +15,8 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: async (connectionId: ConnectionId, message: Value): Promise<AsyncIterableIterator<Value>> =>
-          (async function*(): AsyncIterableIterator<Value> {
+        onReceive: async (connectionId: ConnectionId, message: string): Promise<AsyncIterableIterator<string>> =>
+          (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
             expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
 

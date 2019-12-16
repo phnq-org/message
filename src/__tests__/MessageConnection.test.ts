@@ -1,5 +1,5 @@
 import { Anomaly } from '../errors';
-import { ConversationPerspective, ConversationSummary, MessageConnection, Value } from '../MessageConnection';
+import { ConversationPerspective, ConversationSummary, MessageConnection } from '../MessageConnection';
 import { Message, MessageType } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
@@ -69,7 +69,7 @@ describe('MessageConnection', (): void => {
 
       it('should return the first response if multiple are provided', async (): Promise<void> => {
         serverConnection.onReceive(
-          async (message: Value): Promise<AsyncIterableIterator<string>> =>
+          async (message: string): Promise<AsyncIterableIterator<string>> =>
             (async function*(): AsyncIterableIterator<string> {
               yield 'hey';
               yield 'there';
@@ -246,8 +246,8 @@ describe('MessageConnection', (): void => {
         expect(clientConvSummary.perspective).toBe(ConversationPerspective.Requester);
         expect(serverConvSummary.perspective).toBe(ConversationPerspective.Responder);
 
-        expect(serverConvSummary.responses.map(({ message }): Message<Value> => message)).toEqual(
-          clientConvSummary.responses.map(({ message }): Message<Value> => message),
+        expect(serverConvSummary.responses.map(({ message }): Message => message)).toEqual(
+          clientConvSummary.responses.map(({ message }): Message => message),
         );
 
         expect(serverConvSummary.responses.length).toBe(4);
@@ -259,26 +259,26 @@ describe('MessageConnection', (): void => {
     });
   });
 
-  describe('ping/pong', (): void => {
-    it('should return true for ping when connected', async (): Promise<void> => {
-      const serverTrans = new DirectTransport();
-      const serverConn = new MessageConnection<string>(serverTrans);
-      const clientConn = new MessageConnection<string>(serverTrans.getConnectedTransport());
+  // describe('ping/pong', (): void => {
+  //   it('should return true for ping when connected', async (): Promise<void> => {
+  //     const serverTrans = new DirectTransport();
+  //     const serverConn = new MessageConnection<string>(serverTrans);
+  //     const clientConn = new MessageConnection<string>(serverTrans.getConnectedTransport());
 
-      expect(await serverConn.ping()).toBe(true);
-      expect(await clientConn.ping()).toBe(true);
-    });
+  //     expect(await serverConn.ping()).toBe(true);
+  //     expect(await clientConn.ping()).toBe(true);
+  //   });
 
-    it('should throw for ping when not connected', async (): Promise<void> => {
-      const nonConn = new MessageConnection<string>(new DirectTransport());
-      nonConn.responseTimeout = 50;
+  //   it('should throw for ping when not connected', async (): Promise<void> => {
+  //     const nonConn = new MessageConnection<string>(new DirectTransport());
+  //     nonConn.responseTimeout = 50;
 
-      try {
-        await nonConn.ping();
-        fail('Should have thrown');
-      } catch (err) {
-        expect(err).toBeInstanceOf(Error);
-      }
-    });
-  });
+  //     try {
+  //       await nonConn.ping();
+  //       fail('Should have thrown');
+  //     } catch (err) {
+  //       expect(err).toBeInstanceOf(Error);
+  //     }
+  //   });
+  // });
 });

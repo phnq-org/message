@@ -3,7 +3,7 @@ import WebSocket from 'isomorphic-ws';
 import net from 'net';
 import uuid from 'uuid/v4';
 
-import { MessageConnection, Value } from './MessageConnection';
+import { MessageConnection } from './MessageConnection';
 import { WebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
@@ -18,7 +18,7 @@ interface Config<T> {
   path?: string;
 }
 
-export class WebSocketMessageServer<T extends Value> {
+export class WebSocketMessageServer<T = unknown> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
   private connectHandler?: ConnectHandler;

@@ -117,8 +117,8 @@ The transport for transmitting the messages in the protocol is abstract. The abs
 
 ```TypeScript
 export interface MessageTransport {
-  send(message: Message<Value>): Promise<void>;
-  onReceive(receive: (message: Message<Value>) => void): void;
+  send(message: Message): Promise<void>;
+  onReceive(receive: (message: Message) => void): void;
 }
 ```
 

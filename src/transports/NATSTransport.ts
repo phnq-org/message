@@ -56,7 +56,7 @@ export class NATSTransport implements MessageTransport {
       log('PUBLISH [%s] %O', subject, message);
     }
 
-    await this.nc.publish(subject, serialize(message));
+    this.nc.publish(subject, serialize(message));
   }
 
   public onReceive(receiveHandler: (message: Message) => void): void {

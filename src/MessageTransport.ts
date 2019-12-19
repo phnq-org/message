@@ -12,6 +12,7 @@ export interface Message<T = unknown> {
   c: number;
   s: string;
   p: T;
+  z?: string;
 }
 
 export interface AnomalyMessage extends Message<{ message: string; info: unknown; requestPayload: unknown }> {

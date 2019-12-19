@@ -5,6 +5,7 @@ import uuid from 'uuid/v4';
 
 import { Anomaly } from './errors';
 import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
+import { signMessage, verifyMessage } from './sign';
 
 const log = createLogger('MessageConnection');
 
@@ -46,11 +47,17 @@ export class MessageConnection<T = unknown> {
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   private conversationHandler?: (c: ConversationSummary) => void;
+  private signSalt?: string;
 
-  public constructor(transport: MessageTransport) {
+  public constructor(transport: MessageTransport, { signSalt }: { signSalt?: string } = {}) {
     this.transport = transport;
+    this.signSalt = signSalt;
 
-    transport.onReceive((message): void => {
+    transport.onReceive(message => {
+      if (this.signSalt) {
+        verifyMessage(message, this.signSalt);
+      }
+
       if (message.t === MessageType.Send) {
         this.handleReceive(message as Message<T>);
         return;
@@ -125,12 +132,19 @@ export class MessageConnection<T = unknown> {
     return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<T> | T>;
   }
 
+  private signMessage(message: Message): Message {
+    if (this.signSalt) {
+      return signMessage(message, this.signSalt);
+    }
+    return message;
+  }
+
   private async doRequest(payload: T, expectResponse: boolean): Promise<AsyncIterableIterator<T> | T | undefined> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
     const source = this.id;
 
-    const requestMessage: Message<T> = { t: MessageType.Send, c: reqId, p: payload, s: source };
+    const requestMessage = this.signMessage({ t: MessageType.Send, c: reqId, p: payload, s: source });
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
@@ -210,8 +224,9 @@ export class MessageConnection<T = unknown> {
     const requestPayload = message.p;
 
     const send = (m: Message): void => {
-      this.transport.send(m);
-      conversation.responses.push({ message: m, time: hrtime(start) });
+      const signedMessage = this.signMessage(m);
+      this.transport.send(signedMessage);
+      conversation.responses.push({ message: signedMessage, time: hrtime(start) });
     };
 
     if (!this.receiveHandler) {

@@ -17,11 +17,14 @@ describe('NATSTransport', (): void => {
   beforeAll(
     async (): Promise<void> => {
       nc = await connect({ servers: ['nats://localhost:4223'] });
+      const signSalt = String(Date.now());
       clientConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] }),
+        { signSalt },
       );
       serverConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(nc, { publishSubject: 's2', subscriptions: ['s1'] }),
+        { signSalt },
       );
     },
   );

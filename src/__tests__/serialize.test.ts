@@ -6,8 +6,12 @@ describe('serialize and deserialize', (): void => {
       date: new Date(),
       foo: 'bar',
       nums: [1, 2, 3, 4, 5],
+      nope: undefined,
+      stuff: null,
     };
 
-    expect(deserialize(serialize(obj))).toEqual(obj);
+    const serDeser = deserialize(serialize(obj));
+
+    expect(serDeser).toEqual(obj);
   });
 });

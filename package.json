@@ -15,8 +15,7 @@
     "type": "git",
     "url": "git+https://github.com/pgostovic/message.git"
   },
-  "main": "index.server.js",
-  "browser": "index.client.js",
+  "main": "index.js",
   "scripts": {
     "preinstall": "scripts/preinstall.sh",
     "dist": "tsc",

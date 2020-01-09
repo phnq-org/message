@@ -1,9 +1,8 @@
 import http from 'http';
 
-import { WebSocketMessageClient } from '../index.client';
-import { WebSocketMessageServer } from '../index.server';
 import { MessageConnection } from '../MessageConnection';
-import { ConnectionId } from '../WebSocketMessageServer';
+import { WebSocketMessageClient } from '../WebSocketMessageClient';
+import { ConnectionId, WebSocketMessageServer } from '../WebSocketMessageServer';
 
 describe('MessageConnection', (): void => {
   describe('with WebSocketTransport', (): void => {

@@ -21,4 +21,8 @@ export class WebSocketTransport implements MessageTransport {
       receive(deserialize(event.data));
     });
   }
+
+  public close(): void {
+    this.socket.close();
+  }
 }

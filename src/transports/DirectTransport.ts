@@ -24,4 +24,6 @@ export class DirectTransport implements MessageTransport {
   private handleReceive(message: Message): void {
     this.receive(message);
   }
+
+  public close(): void {}
 }

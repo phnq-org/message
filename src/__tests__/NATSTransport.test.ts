@@ -1,5 +1,3 @@
-import { Client, connect } from 'ts-nats';
-
 import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';
@@ -10,27 +8,27 @@ const wait = (millis: number = 0): Promise<void> =>
   });
 
 describe('NATSTransport', (): void => {
-  let nc: Client;
   let clientConnection: MessageConnection<string | undefined>;
   let serverConnection: MessageConnection<string | undefined>;
 
   beforeAll(
     async (): Promise<void> => {
-      nc = await connect({ servers: ['nats://localhost:4223'] });
+      const config = { servers: ['nats://localhost:4223'] };
       const signSalt = String(Date.now());
       clientConnection = new MessageConnection<string | undefined>(
-        await NATSTransport.create(nc, { publishSubject: 's1', subscriptions: ['s2'] }),
+        await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
         { signSalt },
       );
       serverConnection = new MessageConnection<string | undefined>(
-        await NATSTransport.create(nc, { publishSubject: 's2', subscriptions: ['s1'] }),
+        await NATSTransport.create(config, { publishSubject: 's2', subscriptions: ['s1'] }),
         { signSalt },
       );
     },
   );
 
   afterAll((): void => {
-    nc.close();
+    clientConnection.transport.close();
+    serverConnection.transport.close();
   });
 
   describe('requests with multiple responses', (): void => {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const annotate = (val: any): any => {
+export const annotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(annotate);
@@ -23,7 +23,7 @@ const annotate = (val: any): any => {
 
 const DATE_RE = /^(.+)@@@D$/;
 
-const deannotate = (val: any): any => {
+export const deannotate = (val: any): any => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(deannotate);

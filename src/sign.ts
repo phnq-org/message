@@ -1,5 +1,6 @@
 import { createLogger } from '@phnq/log';
 import hash from 'object-hash';
+import uuid from 'uuid/v4';
 
 import { Message } from './MessageTransport';
 
@@ -7,21 +8,24 @@ const log = createLogger('sign');
 
 /**
  * JSON.stringify changes values sometime (i.e. removes keys with undefined value) which
- * affects the hash value. JSON.parse(JSON.stringify(message)) has the effect of
- * normalizing the message.
+ * affects the hash value. JSON.stringify(payload) has the effect of
+ * normalizing the payload.
  */
-const normalize = (message: Message): Message => JSON.parse(JSON.stringify(message));
+const hashMessage = (message: Message, u: string, salt: string): string =>
+  hash({ m: { t: message.t, c: message.c, s: message.s, p: JSON.stringify(message.p), u }, salt });
 
-export const signMessage = <T = unknown>(message: Message<T>, salt: string): Message<T> => ({
-  ...message,
-  z: hash({ message: normalize(message), salt }),
-});
+export const signMessage = <T = unknown>(message: Message<T>, salt: string): Message<T> => {
+  const u = uuid().replace(/-/g, '');
+  return { ...message, z: [u, hashMessage(message, u, salt)].join(':') };
+};
 
 export const verifyMessage = <T = unknown>(message: Message<T>, salt: string): Message<T> => {
   const { z, ...zLess } = message;
 
-  const verifiedZ = hash({ message: normalize(zLess), salt });
-  if (z !== verifiedZ) {
+  const [u, h] = z ? z.split(':') : [];
+
+  const verifiedZ = hashMessage(zLess, u, salt);
+  if (h !== verifiedZ) {
     log.error('Failed to verify message: ', verifiedZ, message);
     throw new Error('Failed to verify message');
   }

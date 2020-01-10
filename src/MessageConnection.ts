@@ -43,7 +43,7 @@ const DEFAULT_RESPONSE_TIMEOUT = 5000;
 export class MessageConnection<T = unknown> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
-  private transport: MessageTransport;
+  public readonly transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   private conversationHandler?: (c: ConversationSummary) => void;

@@ -12,7 +12,7 @@ export interface Message<T = unknown> {
   c: number;
   s: string;
   p: T;
-  z?: string;
+  z?: string; // signature
 }
 
 export interface AnomalyMessage extends Message<{ message: string; info: unknown; requestPayload: unknown }> {
@@ -26,4 +26,5 @@ export interface ErrorMessage extends Message<{ message: string; requestPayload:
 export interface MessageTransport {
   send(message: Message): Promise<void>;
   onReceive(receive: (message: Message) => void): void;
+  close(): void;
 }

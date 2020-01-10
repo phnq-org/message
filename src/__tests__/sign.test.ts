@@ -97,4 +97,50 @@ describe('sign/verify', (): void => {
       verifyMessage(deserialize(serialize(signedMessage)), SALT);
     }).not.toThrowError();
   });
+
+  it('should successfully sign and verify a message with a large payload', (): void => {
+    const num = 20000;
+
+    const streams: {
+      time: number[];
+      hr: number[];
+      altitude: number[];
+      power: number[];
+      cadence: number[];
+      temp: number[];
+    } = {
+      time: [],
+      hr: [],
+      altitude: [],
+      power: [],
+      cadence: [],
+      temp: [],
+    };
+
+    for (let i = 0; i < num; i++) {
+      streams.time.push(i);
+      streams.hr.push(150);
+      streams.altitude.push(1000);
+      streams.power.push(200);
+      streams.cadence.push(90);
+      streams.temp.push(20);
+    }
+
+    const largeMessage: Message = {
+      t: MessageType.Send,
+      c: 1,
+      s: 'source',
+      p: {
+        streams,
+      },
+    };
+
+    const signedMessage = signMessage(largeMessage, SALT);
+    expect(signedMessage.z).toBeTruthy();
+
+    expect(() => {
+      const serDeser = deserialize(serialize(signedMessage));
+      verifyMessage(serDeser, SALT);
+    }).not.toThrowError();
+  });
 });

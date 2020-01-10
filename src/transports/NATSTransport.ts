@@ -1,8 +1,9 @@
 import { createLogger } from '@phnq/log';
-import { Client, Subscription } from 'ts-nats';
+import hash from 'object-hash';
+import { Client, connect, NatsConnectionOptions, Payload, Subscription } from 'ts-nats';
 
 import { Message, MessageTransport, MessageType } from '../MessageTransport';
-import { deserialize, serialize } from '../serialize';
+import { annotate, deannotate, deserialize, serialize } from '../serialize';
 
 const log = createLogger('NATSTransport');
 
@@ -15,21 +16,34 @@ interface NATSTransportOptions {
   publishSubject: string | SubjectResolver;
 }
 
+// Keep track of clients by config hash so they can be shared
+const clients = new Map<string, Client>();
+
 export class NATSTransport implements MessageTransport {
-  public static async create(nc: Client, options: NATSTransportOptions): Promise<NATSTransport> {
-    const natsTransport = new NATSTransport(nc, options);
+  public static async create(config: NatsConnectionOptions, options: NATSTransportOptions): Promise<NATSTransport> {
+    config.payload = config.payload || Payload.JSON;
+    const nc = clients.get(hash(config)) || (await connect(config));
+    clients.set(hash(config), nc);
+    const natsTransport = new NATSTransport(config, nc, options);
     await natsTransport.initialize();
     return natsTransport;
   }
 
+  private config: NatsConnectionOptions;
   private nc: Client;
   private options: NATSTransportOptions;
   private receiveHandler?: (message: Message) => void;
   private subjectById = new Map<number, string>();
 
-  private constructor(nc: Client, options: NATSTransportOptions) {
+  private constructor(config: NatsConnectionOptions, nc: Client, options: NATSTransportOptions) {
+    this.config = config;
     this.nc = nc;
     this.options = options;
+  }
+
+  public close(): void {
+    this.nc.close();
+    clients.delete(hash(this.config));
   }
 
   public async send(message: Message): Promise<void> {
@@ -56,11 +70,33 @@ export class NATSTransport implements MessageTransport {
       log('PUBLISH [%s] %O', subject, message);
     }
 
-    this.nc.publish(subject, serialize(message));
+    this.nc.publish(subject, this.marshall(message));
   }
 
   public onReceive(receiveHandler: (message: Message) => void): void {
     this.receiveHandler = receiveHandler;
+  }
+
+  private marshall(message: Message): unknown {
+    if (this.config.payload === Payload.JSON) {
+      return annotate(message);
+    } else if (this.config.payload === Payload.STRING) {
+      return serialize(message);
+    } else if (this.config.payload === Payload.BINARY) {
+      // TODO: Binary
+    }
+    throw new Error(`Unsupported payload type: ${this.config.payload}`);
+  }
+
+  private unmarshall(data: unknown): Message {
+    if (this.config.payload === Payload.JSON) {
+      return deannotate(data);
+    } else if (this.config.payload === Payload.STRING) {
+      return deserialize(data as string);
+    } else if (this.config.payload === Payload.BINARY) {
+      // TODO: Binary
+    }
+    throw new Error(`Unsupported payload type: ${this.config.payload}`);
   }
 
   private async initialize(): Promise<void> {
@@ -69,7 +105,7 @@ export class NATSTransport implements MessageTransport {
         (subject): Promise<Subscription> =>
           this.nc.subscribe(subject, (_, msg): void => {
             if (this.receiveHandler) {
-              const message = deserialize(msg.data);
+              const message = this.unmarshall(msg.data);
               if (logTraffic) {
                 log('RECEIVE [%s] %O', subject, message);
               }

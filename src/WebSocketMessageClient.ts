@@ -1,41 +1,31 @@
-import WebSocket from 'isomorphic-ws';
-
 import { MessageConnection } from './MessageConnection';
-import { WebSocketTransport } from './transports/WebSocketTransport';
+import { ClientWebSocketTransport } from './transports/WebSocketTransport';
 
-const webSocketPromises = new Map<string, Promise<WebSocket>>();
+const clients = new Map<string, WebSocketMessageClient>();
 
 export class WebSocketMessageClient<T = unknown> extends MessageConnection<T> {
-  public static async create<T = unknown>(url: string): Promise<WebSocketMessageClient<T>> {
-    let wsPromise = webSocketPromises.get(url);
-    if (!wsPromise) {
-      wsPromise = new Promise<WebSocket>((resolve): void => {
-        const s = new WebSocket(url);
-        s.addEventListener('open', (): void => {
-          resolve(s);
-        });
-      });
-      webSocketPromises.set(url, wsPromise);
+  public static create(url: string): WebSocketMessageClient {
+    let client = clients.get(url);
+    if (!client) {
+      client = new WebSocketMessageClient(url);
+      clients.set(url, client);
     }
-    return new WebSocketMessageClient<T>(await wsPromise);
+    return client;
   }
 
-  public onClose?: () => void;
-
-  private socket: WebSocket;
-
-  private constructor(s: WebSocket) {
-    super(new WebSocketTransport(s));
-    this.socket = s;
-
-    s.addEventListener('close', (): void => {
-      if (this.onClose) {
-        this.onClose();
-      }
-    });
+  private constructor(url: string) {
+    super(new ClientWebSocketTransport(url));
   }
 
-  public isOpen(): boolean {
-    return this.socket.readyState === WebSocket.OPEN;
+  public async isOpen(): Promise<boolean> {
+    return (this.transport as ClientWebSocketTransport).isOpen();
+  }
+
+  public async close(): Promise<void> {
+    await this.transport.close();
+  }
+
+  public set onClose(onClose: () => void) {
+    (this.transport as ClientWebSocketTransport).onClose = onClose;
   }
 }

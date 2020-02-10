@@ -25,5 +25,5 @@ export class DirectTransport implements MessageTransport {
     this.receive(message);
   }
 
-  public close(): void {}
+  public async close(): Promise<void> {}
 }

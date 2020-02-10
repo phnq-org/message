@@ -26,5 +26,5 @@ export interface ErrorMessage extends Message<{ message: string; requestPayload:
 export interface MessageTransport {
   send(message: Message): Promise<void>;
   onReceive(receive: (message: Message) => void): void;
-  close(): void;
+  close(): Promise<void>;
 }

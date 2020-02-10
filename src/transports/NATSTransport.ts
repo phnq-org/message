@@ -41,7 +41,7 @@ export class NATSTransport implements MessageTransport {
     this.options = options;
   }
 
-  public close(): void {
+  public async close(): Promise<void> {
     this.nc.close();
     clients.delete(hash(this.config));
   }

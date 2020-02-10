@@ -4,7 +4,7 @@ import net from 'net';
 import uuid from 'uuid/v4';
 
 import { MessageConnection } from './MessageConnection';
-import { WebSocketTransport } from './transports/WebSocketTransport';
+import { ServerWebSocketTransport } from './transports/WebSocketTransport';
 
 export type ConnectionId = string;
 
@@ -53,7 +53,7 @@ export class WebSocketMessageServer<T = unknown> {
     this.wss.on(
       'connection',
       async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
-        const connection = new MessageConnection<T>(new WebSocketTransport(socket));
+        const connection = new MessageConnection<T>(new ServerWebSocketTransport(socket));
 
         const connectionId = uuid();
 

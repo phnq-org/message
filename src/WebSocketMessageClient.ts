@@ -4,13 +4,13 @@ import { ClientWebSocketTransport } from './transports/WebSocketTransport';
 const clients = new Map<string, WebSocketMessageClient>();
 
 export class WebSocketMessageClient<T = unknown> extends MessageConnection<T> {
-  public static create(url: string): WebSocketMessageClient {
+  public static create<T = unknown>(url: string): WebSocketMessageClient<T> {
     let client = clients.get(url);
     if (!client) {
       client = new WebSocketMessageClient(url);
       clients.set(url, client);
     }
-    return client;
+    return client as WebSocketMessageClient<T>;
   }
 
   private constructor(url: string) {

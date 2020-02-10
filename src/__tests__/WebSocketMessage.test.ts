@@ -159,8 +159,8 @@ describe('MessageConnection', (): void => {
           })(),
       });
 
-      const clientConnection1 = WebSocketMessageClient.create('ws://localhost:55556');
-      const clientConnection2 = WebSocketMessageClient.create('ws://localhost:55556');
+      const clientConnection1 = WebSocketMessageClient.create<string>('ws://localhost:55556');
+      const clientConnection2 = WebSocketMessageClient.create<string>('ws://localhost:55556');
 
       expect(clientConnection1 === clientConnection2).toBe(true);
 

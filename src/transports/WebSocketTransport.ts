@@ -44,7 +44,7 @@ export class ClientWebSocketTransport implements MessageTransport {
 
   public async send(message: Message<unknown>): Promise<void> {
     if (!this.isOpen()) {
-      this.socket = this.connect();
+      await this.reconnect();
     }
 
     await this.waitUntilOpen();
@@ -62,7 +62,7 @@ export class ClientWebSocketTransport implements MessageTransport {
     return new Promise(resolve => {
       if (this.socket) {
         this.socket.addEventListener('close', resolve);
-        this.socket.close();
+        this.socket.close(1000);
       } else {
         resolve();
       }
@@ -74,6 +74,11 @@ export class ClientWebSocketTransport implements MessageTransport {
       this.socket !== undefined &&
       (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
     );
+  }
+
+  public async reconnect(): Promise<void> {
+    this.socket = this.connect();
+    await this.waitUntilOpen();
   }
 
   private async waitUntilOpen(): Promise<void> {

@@ -1,6 +1,5 @@
 import http from 'http';
 import WebSocket from 'isomorphic-ws';
-import net from 'net';
 import uuid from 'uuid/v4';
 
 import { MessageConnection } from './MessageConnection';
@@ -41,18 +40,20 @@ export class WebSocketMessageServer<T = unknown> {
     await new Promise((resolve): void => {
       this.wss.close(resolve);
     });
+    await new Promise((resolve): void => {
+      this.httpServer.close(resolve);
+    });
   }
 
   private start(path: string): void {
-    this.httpServer.on('upgrade', (req: http.IncomingMessage, socket: net.Socket): void => {
-      if (req.url !== path) {
-        socket.destroy();
-      }
-    });
-
     this.wss.on(
       'connection',
       async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
+        if (req.url !== path) {
+          socket.close(1008, 'Wrong path');
+          return;
+        }
+
         const connection = new MessageConnection<T>(new ServerWebSocketTransport(socket));
 
         const connectionId = uuid();
@@ -66,6 +67,10 @@ export class WebSocketMessageServer<T = unknown> {
         if (this.connectHandler) {
           await this.connectHandler(connectionId, req);
         }
+
+        socket.addEventListener('close', () => {
+          this.connections.delete(connectionId);
+        });
       },
     );
   }

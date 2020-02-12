@@ -83,7 +83,7 @@ describe('MessageConnection', (): void => {
         };
       });
 
-      expect(await clientConnection.isOpen()).toBe(false);
+      expect(clientConnection.isOpen()).toBe(false);
 
       await clientConnection.close();
 

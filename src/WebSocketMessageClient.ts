@@ -13,11 +13,15 @@ export class WebSocketMessageClient<T = unknown> extends MessageConnection<T> {
     return client as WebSocketMessageClient<T>;
   }
 
+  private onCloseHandlers: Set<() => void> = new Set();
+
   private constructor(url: string) {
     super(new ClientWebSocketTransport(url));
+
+    (this.transport as ClientWebSocketTransport).onClose = () => [...this.onCloseHandlers].forEach(fn => fn());
   }
 
-  public async isOpen(): Promise<boolean> {
+  public isOpen(): boolean {
     return (this.transport as ClientWebSocketTransport).isOpen();
   }
 
@@ -26,6 +30,10 @@ export class WebSocketMessageClient<T = unknown> extends MessageConnection<T> {
   }
 
   public set onClose(onClose: () => void) {
-    (this.transport as ClientWebSocketTransport).onClose = onClose;
+    this.onCloseHandlers.add(onClose);
+  }
+
+  public async reconnect(): Promise<void> {
+    await (this.transport as ClientWebSocketTransport).reconnect();
   }
 }

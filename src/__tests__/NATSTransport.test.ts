@@ -1,3 +1,5 @@
+import { NatsConnectionOptions } from 'ts-nats';
+
 import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';
@@ -13,7 +15,7 @@ describe('NATSTransport', (): void => {
 
   beforeAll(
     async (): Promise<void> => {
-      const config = { servers: ['nats://localhost:4223'] };
+      const config: NatsConnectionOptions = { servers: ['nats://localhost:4223'] };
       const signSalt = String(Date.now());
       clientConnection = new MessageConnection<string | undefined>(
         await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
@@ -164,6 +166,31 @@ describe('NATSTransport', (): void => {
         expect(err.message).toEqual('Anomaly: hello');
         expect(err.info).toEqual({ foo: 'bar' });
       }
+    });
+  });
+
+  describe('chunking', () => {
+    it('should handle messages that are larger than the max payload size', async (): Promise<void> => {
+      const SIZE = 5000000;
+      const buf = Buffer.alloc(SIZE, 'a');
+
+      let i = 0;
+      while (i < SIZE) {
+        buf[i] = 97 + Math.round(26 * Math.random());
+        i += Math.round(Math.random() * 1000);
+      }
+
+      const bigRandomString = buf.toString();
+
+      serverConnection.onReceive(
+        async (): Promise<string> => {
+          return bigRandomString;
+        },
+      );
+
+      const resp = await clientConnection.requestOne('hello');
+
+      expect(resp).toEqual(bigRandomString);
     });
   });
 });

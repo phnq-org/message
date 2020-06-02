@@ -48,6 +48,7 @@ export class MessageConnection<T = unknown> {
   private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   private conversationHandler?: (c: ConversationSummary) => void;
   private signSalt?: string;
+  private data = new Map<string, unknown>();
 
   public constructor(transport: MessageTransport, { signSalt }: { signSalt?: string } = {}) {
     this.transport = transport;
@@ -91,6 +92,24 @@ export class MessageConnection<T = unknown> {
 
   public get id(): string {
     return this.connId;
+  }
+
+  public getData<D = unknown>(key: string): D {
+    return this.data.get(key) as D;
+  }
+
+  /**
+   * Set a keyed value on the connection. This key/value pair are cached on the
+   * connection instance.
+   * @param key the key
+   * @param value the value
+   */
+  public setData(key: string, value: unknown): void {
+    this.data.set(key, value);
+  }
+
+  public deleteData(key: string): void {
+    this.data.delete(key);
   }
 
   public async send(data: T): Promise<void> {

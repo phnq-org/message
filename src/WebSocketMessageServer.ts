@@ -1,6 +1,5 @@
 import http from 'http';
 import WebSocket from 'isomorphic-ws';
-import uuid from 'uuid/v4';
 
 import { MessageConnection } from './MessageConnection';
 import { ServerWebSocketTransport } from './transports/WebSocketTransport';
@@ -56,20 +55,18 @@ export class WebSocketMessageServer<T = unknown> {
 
         const connection = new MessageConnection<T>(new ServerWebSocketTransport(socket));
 
-        const connectionId = uuid();
-
-        this.connections.set(connectionId, connection);
+        this.connections.set(connection.id, connection);
 
         connection.onReceive(
-          (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connectionId, message),
+          (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connection.id, message),
         );
 
         if (this.connectHandler) {
-          await this.connectHandler(connectionId, req);
+          await this.connectHandler(connection.id, req);
         }
 
         socket.addEventListener('close', () => {
-          this.connections.delete(connectionId);
+          this.connections.delete(connection.id);
         });
       },
     );

@@ -16,16 +16,14 @@ describe('MessageConnection', (): void => {
   describe('with DirectTransport', (): void => {
     describe('requests with multiple responses', (): void => {
       it('should handle multiple responses with an async iterator', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<AsyncIterableIterator<string>> =>
-            (async function*(): AsyncIterableIterator<string> {
-              expect(message).toBe('knock knock');
+        serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>
+          (async function*(): AsyncIterableIterator<string> {
+            expect(message).toBe('knock knock');
 
-              yield "who's";
-              yield 'there';
-              yield '?';
-            })(),
-        );
+            yield "who's";
+            yield 'there';
+            yield '?';
+          })();
 
         const resps1 = [];
         for await (const resp of await clientConnection.requestMulti('knock knock')) {
@@ -43,11 +41,9 @@ describe('MessageConnection', (): void => {
       });
 
       it('should handle a single returned response with a single value', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            return `you said ${message}`;
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          return `you said ${message}`;
+        };
 
         const resp = await clientConnection.requestOne('hello');
         expect(resp).toEqual('you said hello');
@@ -56,11 +52,9 @@ describe('MessageConnection', (): void => {
 
     describe('requestOne', (): void => {
       it('should handle a single returned response', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            return `you said ${message}`;
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          return `you said ${message}`;
+        };
 
         const resp = await clientConnection.requestOne('hello');
 
@@ -68,14 +62,12 @@ describe('MessageConnection', (): void => {
       });
 
       it('should return the first response if multiple are provided', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message: string): Promise<AsyncIterableIterator<string>> =>
-            (async function*(): AsyncIterableIterator<string> {
-              yield 'hey';
-              yield 'there';
-              yield message as string;
-            })(),
-        );
+        serverConnection.onReceive = async (message: string): Promise<AsyncIterableIterator<string>> =>
+          (async function*(): AsyncIterableIterator<string> {
+            yield 'hey';
+            yield 'there';
+            yield message as string;
+          })();
 
         const resp = await clientConnection.requestOne('hello');
 
@@ -85,11 +77,9 @@ describe('MessageConnection', (): void => {
 
     describe('requestMulti', (): void => {
       it('should return an iterator when a single response is provided', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            return `you said ${message}`;
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          return `you said ${message}`;
+        };
 
         const resp = await clientConnection.requestMulti('hello');
         expect(typeof resp).toBe('object');
@@ -103,14 +93,12 @@ describe('MessageConnection', (): void => {
       });
 
       it('should return an iterator when multiple responses are provided', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<AsyncIterableIterator<string>> =>
-            (async function*(): AsyncIterableIterator<string> {
-              yield 'hey';
-              yield 'there';
-              yield message;
-            })(),
-        );
+        serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>
+          (async function*(): AsyncIterableIterator<string> {
+            yield 'hey';
+            yield 'there';
+            yield message;
+          })();
 
         const resp = await clientConnection.requestMulti('hello');
         expect(typeof resp).toBe('object');
@@ -129,19 +117,15 @@ describe('MessageConnection', (): void => {
         const serverReceive = jest.fn();
         const clientReceive = jest.fn();
 
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            serverReceive(message);
-            return '';
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          serverReceive(message);
+          return '';
+        };
 
-        clientConnection.onReceive(
-          async (message): Promise<string> => {
-            clientReceive(message);
-            return '';
-          },
-        );
+        clientConnection.onReceive = async (message): Promise<string> => {
+          clientReceive(message);
+          return '';
+        };
 
         await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
 
@@ -152,11 +136,9 @@ describe('MessageConnection', (): void => {
 
     describe('handling errors', (): void => {
       it('should handle internal errors', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            throw new Error(`Error: ${message}`);
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          throw new Error(`Error: ${message}`);
+        };
 
         try {
           await clientConnection.requestOne('hello');
@@ -168,11 +150,9 @@ describe('MessageConnection', (): void => {
       });
 
       it('should handle anomalies', async (): Promise<void> => {
-        serverConnection.onReceive(
-          async (message): Promise<string> => {
-            throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
-          },
-        );
+        serverConnection.onReceive = async (message): Promise<string> => {
+          throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
+        };
 
         try {
           await clientConnection.requestOne('hello');
@@ -190,12 +170,10 @@ describe('MessageConnection', (): void => {
     it('should throw an error if the response times out', async (): Promise<void> => {
       clientConnection.responseTimeout = 50;
 
-      serverConnection.onReceive(
-        async (message): Promise<string> => {
-          await wait(100);
-          return `you said ${message}`;
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<string> => {
+        await wait(100);
+        return `you said ${message}`;
+      };
 
       try {
         await clientConnection.requestOne('hello');
@@ -215,24 +193,22 @@ describe('MessageConnection', (): void => {
       let clientConvSummary: ConversationSummary | undefined;
       let serverConvSummary: ConversationSummary | undefined;
 
-      serverConn.onConversation((convSummary): void => {
+      serverConn.onConversation = (convSummary): void => {
         serverConvSummary = convSummary;
-      });
+      };
 
-      clientConn.onConversation((convSummary): void => {
+      clientConn.onConversation = (convSummary): void => {
         clientConvSummary = convSummary;
-      });
+      };
 
-      serverConn.onReceive(
-        async (message): Promise<AsyncIterableIterator<string>> =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
+      serverConn.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-      );
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const resps = [];
       for await (const resp of await clientConn.requestMulti('knock knock')) {

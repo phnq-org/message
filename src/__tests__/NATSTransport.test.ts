@@ -35,16 +35,14 @@ describe('NATSTransport', (): void => {
 
   describe('requests with multiple responses', (): void => {
     it('should handle multiple responses with an async iterator', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<AsyncIterableIterator<string>> =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
+      serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-      );
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const resps1 = [];
       for await (const resp of await clientConnection.requestMulti('knock knock')) {
@@ -62,11 +60,9 @@ describe('NATSTransport', (): void => {
     });
 
     it('should handle a single returned response with an iterator', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<string> => {
-          return `you said ${message}`;
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<string> => {
+        return `you said ${message}`;
+      };
 
       const resps1 = [];
       for await (const resp of await clientConnection.requestMulti('hello')) {
@@ -79,11 +75,9 @@ describe('NATSTransport', (): void => {
 
   describe('requests with a single response', (): void => {
     it('should handle a single returned response', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<string> => {
-          return `you said ${message}`;
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<string> => {
+        return `you said ${message}`;
+      };
 
       const resp = await clientConnection.requestOne('hello');
 
@@ -91,14 +85,12 @@ describe('NATSTransport', (): void => {
     });
 
     it('should return the first response if multiple are provided', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<AsyncIterableIterator<string | undefined>> =>
-          (async function*(): AsyncIterableIterator<string | undefined> {
-            yield 'hey';
-            yield 'there';
-            yield message;
-          })(),
-      );
+      serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string | undefined>> =>
+        (async function*(): AsyncIterableIterator<string | undefined> {
+          yield 'hey';
+          yield 'there';
+          yield message;
+        })();
 
       const resp = await clientConnection.requestOne('hello');
 
@@ -111,19 +103,15 @@ describe('NATSTransport', (): void => {
       const serverReceive = jest.fn();
       const clientReceive = jest.fn();
 
-      serverConnection.onReceive(
-        async (message): Promise<undefined> => {
-          serverReceive(message);
-          return undefined;
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<undefined> => {
+        serverReceive(message);
+        return undefined;
+      };
 
-      clientConnection.onReceive(
-        async (message): Promise<undefined> => {
-          clientReceive(message);
-          return undefined;
-        },
-      );
+      clientConnection.onReceive = async (message): Promise<undefined> => {
+        clientReceive(message);
+        return undefined;
+      };
 
       await Promise.all([clientConnection.send('one way'), serverConnection.send('or another')]);
 
@@ -136,11 +124,9 @@ describe('NATSTransport', (): void => {
 
   describe('handling errors', (): void => {
     it('should handle internal errors', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<undefined> => {
-          throw new Error(`Error: ${message}`);
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<undefined> => {
+        throw new Error(`Error: ${message}`);
+      };
 
       try {
         await clientConnection.requestOne('hello');
@@ -152,11 +138,9 @@ describe('NATSTransport', (): void => {
     });
 
     it('should handle anomalies', async (): Promise<void> => {
-      serverConnection.onReceive(
-        async (message): Promise<undefined> => {
-          throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
-        },
-      );
+      serverConnection.onReceive = async (message): Promise<undefined> => {
+        throw new Anomaly(`Anomaly: ${message}`, { foo: 'bar' });
+      };
 
       try {
         await clientConnection.requestOne('hello');
@@ -182,11 +166,9 @@ describe('NATSTransport', (): void => {
 
       const bigRandomString = buf.toString();
 
-      serverConnection.onReceive(
-        async (): Promise<string> => {
-          return bigRandomString;
-        },
-      );
+      serverConnection.onReceive = async (): Promise<string> => {
+        return bigRandomString;
+      };
 
       const resp = await clientConnection.requestOne('hello');
 

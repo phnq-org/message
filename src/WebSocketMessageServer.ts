@@ -57,9 +57,8 @@ export class WebSocketMessageServer<T = unknown> {
 
         this.connections.set(connection.id, connection);
 
-        connection.onReceive(
-          (message: T): Promise<T | AsyncIterableIterator<T>> => this.receiveHandler(connection.id, message),
-        );
+        connection.onReceive = (message: T): Promise<T | AsyncIterableIterator<T>> =>
+          this.receiveHandler(connection.id, message);
 
         if (this.connectHandler) {
           await this.connectHandler(connection.id, req);

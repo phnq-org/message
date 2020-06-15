@@ -7,6 +7,30 @@ import { Anomaly } from './errors';
 import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
 import { signMessage, verifyMessage } from './sign';
 
+/**
+ * MessageConnection
+ * =================
+ * A conversation between agents consists of a single request by one agent, followed by zero or more responses from another agent.
+ * Accordingly, there are two possible perspectives in any conversation:
+ *
+ * 1) Client -- one who sends a message and gets responses,
+ * 2) Server -- one who waits for messages and sends responses.
+ *
+ * The complication in this familiar client/server relationship is that a single MessageConnection instance
+ * may be both client and server.
+ *
+ * As Client
+ * ---------
+ * This simply involves calling methods `send()` or `request*()`. Send is one-way so since there will be no response,
+ * there is no return value. The `request*()` methods return either an async value (i.e. promise) or iterator (multiple
+ * values).
+ *
+ * As Server
+ * ---------
+ * The `onReceive` field must be set to act as a server. Implementing `onReceive` involves dealing with an incoming
+ * message and returning either an async value or an async iterator.
+ */
+
 const log = createLogger('MessageConnection');
 
 const idIterator = (function*(): IterableIterator<number> {
@@ -45,10 +69,11 @@ export class MessageConnection<T = unknown> {
   private connId = uuid();
   public readonly transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
-  private receiveHandler?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
-  private conversationHandler?: (c: ConversationSummary) => void;
   private signSalt?: string;
   private data = new Map<string, unknown>();
+
+  public onReceive?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
+  public onConversation?: (c: ConversationSummary) => void;
 
   public constructor(transport: MessageTransport, { signSalt }: { signSalt?: string } = {}) {
     this.transport = transport;
@@ -186,7 +211,7 @@ export class MessageConnection<T = unknown> {
       const firstMsg = (await iter.next()).value as Message<T>;
       conversation.responses.push({ message: firstMsg, time: hrtime(start) });
 
-      const conversationHandler = this.conversationHandler;
+      const onConversation = this.onConversation;
 
       if (firstMsg.t === MessageType.Multi) {
         return (async function*(): AsyncIterableIterator<T> {
@@ -206,8 +231,8 @@ export class MessageConnection<T = unknown> {
                 );
               }
             }
-            if (conversationHandler) {
-              conversationHandler(conversation);
+            if (onConversation) {
+              onConversation(conversation);
             }
           } finally {
             responseQueues.delete(reqId);
@@ -215,21 +240,13 @@ export class MessageConnection<T = unknown> {
         })();
       } else {
         responseQueues.delete(reqId);
-        if (conversationHandler) {
-          conversationHandler(conversation);
+        if (onConversation) {
+          onConversation(conversation);
         }
         possiblyThrow(firstMsg);
         return firstMsg.p;
       }
     }
-  }
-
-  public onReceive(receiveHandler: (value: T) => Promise<T | AsyncIterableIterator<T> | void>): void {
-    this.receiveHandler = receiveHandler;
-  }
-
-  public onConversation(conversationHandler: (c: ConversationSummary) => void): void {
-    this.conversationHandler = conversationHandler;
   }
 
   private async handleReceive(message: Message<T>): Promise<void> {
@@ -248,12 +265,12 @@ export class MessageConnection<T = unknown> {
       conversation.responses.push({ message: signedMessage, time: hrtime(start) });
     };
 
-    if (!this.receiveHandler) {
+    if (!this.onReceive) {
       throw new Error('No receive handler set.');
     }
 
     try {
-      const result = await this.receiveHandler(requestPayload);
+      const result = await this.onReceive(requestPayload);
       if (typeof result === 'object' && (result as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
         for await (const responsePayload of result as AsyncIterableIterator<T>) {
           send({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
@@ -286,8 +303,8 @@ export class MessageConnection<T = unknown> {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
       }
     } finally {
-      if (this.conversationHandler) {
-        this.conversationHandler(conversation);
+      if (this.onConversation) {
+        this.onConversation(conversation);
       }
     }
   }

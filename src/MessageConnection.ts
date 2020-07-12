@@ -4,7 +4,15 @@ import hrtime from 'browser-process-hrtime';
 import uuid from 'uuid/v4';
 
 import { Anomaly } from './errors';
-import { AnomalyMessage, ErrorMessage, Message, MessageTransport, MessageType } from './MessageTransport';
+import {
+  AnomalyMessage,
+  AnomalyPayload,
+  ErrorMessage,
+  ErrorPayload,
+  Message,
+  MessageTransport,
+  MessageType,
+} from './MessageTransport';
 import { signMessage, verifyMessage } from './sign';
 
 /**
@@ -65,6 +73,9 @@ export interface ConversationSummary {
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
 export class MessageConnection<T = unknown> {
+  public static defaultMarshalPayload = (payload: unknown) => payload;
+  public static defaultUnmarshalPayload = (payload: unknown) => payload;
+
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
   public readonly transport: MessageTransport;
@@ -74,6 +85,8 @@ export class MessageConnection<T = unknown> {
 
   public onReceive?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   public onConversation?: (c: ConversationSummary) => void;
+  public marshalPayload = (payload: unknown) => MessageConnection.defaultMarshalPayload(payload);
+  public unmarshalPayload = (payload: unknown) => MessageConnection.defaultUnmarshalPayload(payload);
 
   public constructor(transport: MessageTransport, { signSalt }: { signSalt?: string } = {}) {
     this.transport = transport;
@@ -85,7 +98,7 @@ export class MessageConnection<T = unknown> {
       }
 
       if (message.t === MessageType.Send) {
-        this.handleReceive(message as Message<T>);
+        this.handleReceive({ ...message, p: this.unmarshalPayload(message.p) as T });
         return;
       }
 
@@ -188,7 +201,12 @@ export class MessageConnection<T = unknown> {
     const responseQueues = this.responseQueues;
     const source = this.id;
 
-    const requestMessage = this.signMessage({ t: MessageType.Send, c: reqId, p: payload, s: source });
+    const requestMessage = this.signMessage({
+      t: MessageType.Send,
+      c: reqId,
+      p: this.marshalPayload(payload),
+      s: source,
+    });
 
     const conversation: ConversationSummary = {
       perspective: ConversationPerspective.Requester,
@@ -259,8 +277,8 @@ export class MessageConnection<T = unknown> {
     const start = hrtime();
     const requestPayload = message.p;
 
-    const send = (m: Message): void => {
-      const signedMessage = this.signMessage(m);
+    const send = (m: Message<T | AnomalyPayload | ErrorPayload | {}>): void => {
+      const signedMessage = this.signMessage({ ...m, p: this.marshalPayload(m.p) });
       this.transport.send(signedMessage);
       conversation.responses.push({ message: signedMessage, time: hrtime(start) });
     };

@@ -15,11 +15,22 @@ export interface Message<T = unknown> {
   z?: string; // signature
 }
 
-export interface AnomalyMessage extends Message<{ message: string; info: unknown; requestPayload: unknown }> {
+export interface AnomalyPayload {
+  message: string;
+  info: unknown;
+  requestPayload: unknown;
+}
+
+export interface AnomalyMessage extends Message<AnomalyPayload> {
   t: MessageType.Anomaly;
 }
 
-export interface ErrorMessage extends Message<{ message: string; requestPayload: unknown }> {
+export interface ErrorPayload {
+  message: string;
+  requestPayload: unknown;
+}
+
+export interface ErrorMessage extends Message<ErrorPayload> {
   t: MessageType.Error;
 }
 

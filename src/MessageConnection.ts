@@ -72,25 +72,33 @@ export interface ConversationSummary {
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
-export class MessageConnection<T = unknown> {
-  public static defaultMarshalPayload = (payload: unknown) => payload;
-  public static defaultUnmarshalPayload = (payload: unknown) => payload;
+interface MessageConnectionOptions {
+  signSalt?: string;
+  marshalPayload?: (payload: unknown) => unknown;
+  unmarshalPayload?: (payload: unknown) => unknown;
+}
 
+export class MessageConnection<T = unknown> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
   public readonly transport: MessageTransport;
   private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
   private signSalt?: string;
+  private marshalPayload: (payload: unknown) => unknown;
+  private unmarshalPayload: (payload: unknown) => unknown;
   private data = new Map<string, unknown>();
 
   public onReceive?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
   public onConversation?: (c: ConversationSummary) => void;
-  public marshalPayload = (payload: unknown) => MessageConnection.defaultMarshalPayload(payload);
-  public unmarshalPayload = (payload: unknown) => MessageConnection.defaultUnmarshalPayload(payload);
 
-  public constructor(transport: MessageTransport, { signSalt }: { signSalt?: string } = {}) {
+  public constructor(
+    transport: MessageTransport,
+    { signSalt, marshalPayload, unmarshalPayload }: MessageConnectionOptions = {},
+  ) {
     this.transport = transport;
     this.signSalt = signSalt;
+    this.marshalPayload = marshalPayload || (p => p);
+    this.unmarshalPayload = unmarshalPayload || (p => p);
 
     transport.onReceive(message => {
       if (this.signSalt) {

@@ -105,8 +105,10 @@ export class MessageConnection<T = unknown> {
         verifyMessage(message, this.signSalt);
       }
 
+      const unmarshaledMessage = { ...message, p: this.unmarshalPayload(message.p) as T };
+
       if (message.t === MessageType.Send) {
-        this.handleReceive({ ...message, p: this.unmarshalPayload(message.p) as T });
+        this.handleReceive(unmarshaledMessage);
         return;
       }
 
@@ -117,19 +119,19 @@ export class MessageConnection<T = unknown> {
        * every incoming message. Since request ids are assigned by the global
        * idIterator, there is a zero collision guarantee.
        */
-      const responseQueue = this.responseQueues.get(message.c);
+      const responseQueue = this.responseQueues.get(unmarshaledMessage.c);
       if (responseQueue) {
-        switch (message.t) {
+        switch (unmarshaledMessage.t) {
           case MessageType.Response:
           case MessageType.Anomaly:
           case MessageType.Error:
           case MessageType.End:
-            responseQueue.enqueue(message as Message<T>);
+            responseQueue.enqueue(unmarshaledMessage);
             responseQueue.flush();
             break;
 
           case MessageType.Multi:
-            responseQueue.enqueue(message as Message<T>);
+            responseQueue.enqueue(unmarshaledMessage);
             break;
         }
       }

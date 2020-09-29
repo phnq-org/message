@@ -10,18 +10,18 @@ const wait = (millis: number = 0): Promise<void> =>
   });
 
 describe('NATSTransport', (): void => {
-  let clientConnection: MessageConnection<string | undefined>;
-  let serverConnection: MessageConnection<string | undefined>;
+  let clientConnection: MessageConnection<string | undefined, string | undefined>;
+  let serverConnection: MessageConnection<string | undefined, string | undefined>;
 
   beforeAll(
     async (): Promise<void> => {
       const config: NatsConnectionOptions = { servers: ['nats://localhost:4223'] };
       const signSalt = String(Date.now());
-      clientConnection = new MessageConnection<string | undefined>(
+      clientConnection = new MessageConnection<string | undefined, string | undefined>(
         await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
         { signSalt },
       );
-      serverConnection = new MessageConnection<string | undefined>(
+      serverConnection = new MessageConnection<string | undefined, string | undefined>(
         await NATSTransport.create(config, { publishSubject: 's2', subscriptions: ['s1'] }),
         { signSalt },
       );

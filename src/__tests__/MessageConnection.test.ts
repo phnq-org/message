@@ -1,11 +1,11 @@
 import { Anomaly } from '../errors';
 import { ConversationPerspective, ConversationSummary, MessageConnection } from '../MessageConnection';
-import { Message, MessageType } from '../MessageTransport';
+import { MessageType, ResponseMessage } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
-const serverTransport = new DirectTransport();
-const serverConnection = new MessageConnection<string>(serverTransport);
-const clientConnection = new MessageConnection<string>(serverTransport.getConnectedTransport());
+const serverTransport = new DirectTransport<string, string>();
+const serverConnection = new MessageConnection<string, string>(serverTransport);
+const clientConnection = new MessageConnection<string, string>(serverTransport.getConnectedTransport());
 
 const wait = (millis: number = 0): Promise<void> =>
   new Promise((resolve): void => {
@@ -185,13 +185,13 @@ describe('MessageConnection', (): void => {
   });
 
   describe('Conversation Summaries', (): void => {
-    const serverTrans = new DirectTransport();
-    const serverConn = new MessageConnection<string>(serverTrans);
-    const clientConn = new MessageConnection<string>(serverTrans.getConnectedTransport());
+    const serverTrans = new DirectTransport<string, string>();
+    const serverConn = new MessageConnection<string, string>(serverTrans);
+    const clientConn = new MessageConnection<string, string>(serverTrans.getConnectedTransport());
 
     it('should yield expected summaries that agree client vs. server', async (): Promise<void> => {
-      let clientConvSummary: ConversationSummary | undefined;
-      let serverConvSummary: ConversationSummary | undefined;
+      let clientConvSummary: ConversationSummary<string, string> | undefined;
+      let serverConvSummary: ConversationSummary<string, string> | undefined;
 
       serverConn.onConversation = (convSummary): void => {
         serverConvSummary = convSummary;
@@ -222,8 +222,8 @@ describe('MessageConnection', (): void => {
         expect(clientConvSummary.perspective).toBe(ConversationPerspective.Requester);
         expect(serverConvSummary.perspective).toBe(ConversationPerspective.Responder);
 
-        expect(serverConvSummary.responses.map(({ message }): Message => message)).toEqual(
-          clientConvSummary.responses.map(({ message }): Message => message),
+        expect(serverConvSummary.responses.map(({ message }): ResponseMessage<string> => message)).toEqual(
+          clientConvSummary.responses.map(({ message }): ResponseMessage<string> => message),
         );
 
         expect(serverConvSummary.responses.length).toBe(4);

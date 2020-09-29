@@ -3,7 +3,7 @@ import hash from 'object-hash';
 import { Client, connect, NatsConnectionOptions, Payload, ServerInfo, Subscription } from 'ts-nats';
 import uuid from 'uuid/v4';
 
-import { Message, MessageTransport, MessageType } from '../MessageTransport';
+import { MessageTransport, MessageType, RequestMessage, ResponseMessage } from '../MessageTransport';
 import { annotate, deannotate, deserialize, serialize } from '../serialize';
 
 const log = createLogger('NATSTransport');
@@ -12,18 +12,21 @@ const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === '1';
 
 const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
 
-type SubjectResolver = (message: Message) => string;
+type SubjectResolver<T, R> = (message: RequestMessage<T> | ResponseMessage<R>) => string;
 
-interface NATSTransportOptions {
+interface NATSTransportOptions<T, R> {
   subscriptions: string[];
-  publishSubject: string | SubjectResolver;
+  publishSubject: string | SubjectResolver<T, R>;
 }
 
 // Keep track of clients by config hash so they can be shared
 const clients = new Map<string, [Client, ServerInfo]>();
 
-export class NATSTransport implements MessageTransport {
-  public static async create(config: NatsConnectionOptions, options: NATSTransportOptions): Promise<NATSTransport> {
+export class NATSTransport<T, R> implements MessageTransport<T, R> {
+  public static async create<T, R>(
+    config: NatsConnectionOptions,
+    options: NATSTransportOptions<T, R>,
+  ): Promise<NATSTransport<T, R>> {
     config.payload = config.payload || Payload.BINARY;
     const [nc, serverInfo] =
       clients.get(hash(config)) ||
@@ -35,15 +38,15 @@ export class NATSTransport implements MessageTransport {
       }));
 
     clients.set(hash(config), [nc, serverInfo]);
-    const natsTransport = new NATSTransport(config, nc, options, serverInfo);
+    const natsTransport = new NATSTransport<T, R>(config, nc, options, serverInfo);
     await natsTransport.initialize();
     return natsTransport;
   }
 
   private config: NatsConnectionOptions;
   private nc: Client;
-  private options: NATSTransportOptions;
-  private receiveHandler?: (message: Message) => void;
+  private options: NATSTransportOptions<T, R>;
+  private receiveHandler?: (message: RequestMessage<T> | ResponseMessage<R>) => void;
   private subjectById = new Map<number, string>();
   private serverInfo: ServerInfo;
   private chunkedMessages = new Map<string, Buffer[]>();
@@ -51,7 +54,7 @@ export class NATSTransport implements MessageTransport {
   private constructor(
     config: NatsConnectionOptions,
     nc: Client,
-    options: NATSTransportOptions,
+    options: NATSTransportOptions<T, R>,
     serverInfo: ServerInfo,
   ) {
     this.config = config;
@@ -65,7 +68,7 @@ export class NATSTransport implements MessageTransport {
     clients.delete(hash(this.config));
   }
 
-  public async send(message: Message): Promise<void> {
+  public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {
     const publishSubject = this.options.publishSubject;
 
     let subject: string | undefined;
@@ -98,11 +101,11 @@ export class NATSTransport implements MessageTransport {
     }
   }
 
-  public onReceive(receiveHandler: (message: Message) => void): void {
+  public onReceive(receiveHandler: (message: RequestMessage<T> | ResponseMessage<R>) => void): void {
     this.receiveHandler = receiveHandler;
   }
 
-  private marshall(message: Message): unknown {
+  private marshall(message: RequestMessage<T> | ResponseMessage<R>): unknown {
     if (this.config.payload === Payload.JSON) {
       return annotate(message);
     } else if (this.config.payload === Payload.STRING) {
@@ -113,7 +116,7 @@ export class NATSTransport implements MessageTransport {
     throw new Error(`Unsupported payload type: ${this.config.payload}`);
   }
 
-  private unmarshall(data: unknown): Message {
+  private unmarshall(data: unknown): RequestMessage<T> | ResponseMessage<R> {
     if (this.config.payload === Payload.JSON) {
       return deannotate(data);
     } else if (this.config.payload === Payload.STRING) {

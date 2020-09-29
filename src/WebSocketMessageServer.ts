@@ -7,23 +7,23 @@ import { ServerWebSocketTransport } from './transports/WebSocketTransport';
 export type ConnectionId = string;
 
 type ConnectHandler = (connectionId: ConnectionId, upgradeRequest: http.IncomingMessage) => Promise<void>;
-type ReceiveHandler<T> = (connectionId: ConnectionId, message: T) => Promise<T | AsyncIterableIterator<T>>;
+type ReceiveHandler<T, R> = (connectionId: ConnectionId, message: T) => Promise<R | AsyncIterableIterator<R>>;
 
-interface Config<T> {
+interface Config<T, R> {
   httpServer: http.Server;
   onConnect?: ConnectHandler;
-  onReceive: ReceiveHandler<T>;
+  onReceive: ReceiveHandler<T, R>;
   path?: string;
 }
 
-export class WebSocketMessageServer<T = unknown> {
+export class WebSocketMessageServer<T = unknown, R = T> {
   private httpServer: http.Server;
   private wss: WebSocket.Server;
   private connectHandler?: ConnectHandler;
-  private receiveHandler: ReceiveHandler<T>;
-  private connections = new Map<ConnectionId, MessageConnection<T>>();
+  private receiveHandler: ReceiveHandler<T, R>;
+  private connections = new Map<ConnectionId, MessageConnection<T, R>>();
 
-  public constructor({ httpServer, onConnect, onReceive, path = '/' }: Config<T>) {
+  public constructor({ httpServer, onConnect, onReceive, path = '/' }: Config<T, R>) {
     this.httpServer = httpServer;
     this.connectHandler = onConnect;
     this.receiveHandler = onReceive;
@@ -31,7 +31,7 @@ export class WebSocketMessageServer<T = unknown> {
     this.start(path);
   }
 
-  public getConnection(id: ConnectionId): MessageConnection<T> | undefined {
+  public getConnection(id: ConnectionId): MessageConnection<T, R> | undefined {
     return this.connections.get(id);
   }
 
@@ -53,11 +53,11 @@ export class WebSocketMessageServer<T = unknown> {
           return;
         }
 
-        const connection = new MessageConnection<T>(new ServerWebSocketTransport(socket));
+        const connection = new MessageConnection<T, R>(new ServerWebSocketTransport<T, R>(socket));
 
         this.connections.set(connection.id, connection);
 
-        connection.onReceive = (message: T): Promise<T | AsyncIterableIterator<T>> =>
+        connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> =>
           this.receiveHandler(connection.id, message);
 
         if (this.connectHandler) {

@@ -6,12 +6,11 @@ import uuid from 'uuid/v4';
 import { Anomaly } from './errors';
 import {
   AnomalyMessage,
-  AnomalyPayload,
   ErrorMessage,
-  ErrorPayload,
-  Message,
   MessageTransport,
   MessageType,
+  RequestMessage,
+  ResponseMessage,
 } from './MessageTransport';
 import { signMessage, verifyMessage } from './sign';
 
@@ -48,7 +47,7 @@ const idIterator = (function*(): IterableIterator<number> {
   }
 })();
 
-const possiblyThrow = (message: Message): void => {
+const possiblyThrow = (message: ResponseMessage<unknown>): void => {
   switch (message.t) {
     case MessageType.Anomaly:
       const anomalyMessage = message as AnomalyMessage;
@@ -64,36 +63,36 @@ export enum ConversationPerspective {
   Responder = 'responder',
 }
 
-export interface ConversationSummary {
+export interface ConversationSummary<T, R> {
   perspective: ConversationPerspective;
-  request: Message;
-  responses: { message: Message; time: [number, number] }[];
+  request: RequestMessage<T>;
+  responses: { message: ResponseMessage<R>; time: [number, number] }[];
 }
 
 const DEFAULT_RESPONSE_TIMEOUT = 5000;
 
-interface MessageConnectionOptions {
+interface MessageConnectionOptions<T, R> {
   signSalt?: string;
-  marshalPayload?: (payload: unknown) => unknown;
-  unmarshalPayload?: (payload: unknown) => unknown;
+  marshalPayload?: (payload: T | R) => T | R;
+  unmarshalPayload?: (payload: T | R) => T | R;
 }
 
-export class MessageConnection<T = unknown> {
+export class MessageConnection<T, R> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
-  public readonly transport: MessageTransport;
-  private responseQueues = new Map<number, AsyncQueue<Message<T>>>();
+  public readonly transport: MessageTransport<T, R>;
+  private responseQueues = new Map<number, AsyncQueue<ResponseMessage<R>>>();
   private signSalt?: string;
-  private marshalPayload: (payload: unknown) => unknown;
-  private unmarshalPayload: (payload: unknown) => unknown;
+  private marshalPayload: (payload: T | R) => T | R;
+  private unmarshalPayload: (payload: T | R) => T | R;
   private data = new Map<string, unknown>();
 
-  public onReceive?: (message: T) => Promise<T | AsyncIterableIterator<T> | void>;
-  public onConversation?: (c: ConversationSummary) => void;
+  public onReceive?: (message: T) => Promise<R | AsyncIterableIterator<R> | void>;
+  public onConversation?: (c: ConversationSummary<T, R>) => void;
 
   public constructor(
-    transport: MessageTransport,
-    { signSalt, marshalPayload, unmarshalPayload }: MessageConnectionOptions = {},
+    transport: MessageTransport<T, R>,
+    { signSalt, marshalPayload, unmarshalPayload }: MessageConnectionOptions<T, R> = {},
   ) {
     this.transport = transport;
     this.signSalt = signSalt;
@@ -102,13 +101,13 @@ export class MessageConnection<T = unknown> {
 
     transport.onReceive(message => {
       if (this.signSalt) {
-        verifyMessage(message, this.signSalt);
+        verifyMessage<T, R>(message, this.signSalt);
       }
 
-      const unmarshaledMessage = { ...message, p: this.unmarshalPayload(message.p) as T };
+      const unmarshaledMessage = this.unmarshalMessage(message);
 
-      if (message.t === MessageType.Send) {
-        this.handleReceive(unmarshaledMessage);
+      if (message.t === MessageType.Request) {
+        this.handleRequest(unmarshaledMessage as RequestMessage<T>);
         return;
       }
 
@@ -164,13 +163,13 @@ export class MessageConnection<T = unknown> {
     await this.requestOne(data, false);
   }
 
-  public async requestOne(data: T, expectResponse = true): Promise<T> {
+  public async requestOne(data: T, expectResponse = true): Promise<R> {
     const resp = await this.request(data, expectResponse);
 
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
-      const resps: T[] = [];
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+      const resps: R[] = [];
 
-      for await (const r of resp as AsyncIterableIterator<T>) {
+      for await (const r of resp as AsyncIterableIterator<R>) {
         resps.push(r);
       }
 
@@ -180,52 +179,76 @@ export class MessageConnection<T = unknown> {
 
       return resps[0];
     } else {
-      return resp as T;
+      return resp as R;
     }
   }
 
-  public async requestMulti(data: T): Promise<AsyncIterableIterator<T>> {
+  public async requestMulti(data: T): Promise<AsyncIterableIterator<R>> {
     const resp = await this.request(data);
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
-      return resp as AsyncIterableIterator<T>;
+    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+      return resp as AsyncIterableIterator<R>;
     } else {
-      return (async function*(): AsyncIterableIterator<T> {
-        yield resp as T;
+      return (async function*(): AsyncIterableIterator<R> {
+        yield resp as R;
       })();
     }
   }
 
-  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<T> | T> {
-    return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<T> | T>;
+  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<R> | R> {
+    return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<R> | R>;
   }
 
-  private signMessage(message: Message): Message {
-    if (this.signSalt) {
-      return signMessage(message, this.signSalt);
+  private marshalMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+    switch (message.t) {
+      case MessageType.Request:
+        return { ...message, p: this.marshalPayload(message.p as T) as T };
+
+      case MessageType.Response:
+      case MessageType.Multi:
+        return { ...message, p: this.marshalPayload(message.p as R) as R };
     }
     return message;
   }
 
-  private async doRequest(payload: T, expectResponse: boolean): Promise<AsyncIterableIterator<T> | T | undefined> {
+  private unmarshalMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+    switch (message.t) {
+      case MessageType.Request:
+        return { ...message, p: this.unmarshalPayload(message.p as T) as T };
+
+      case MessageType.Response:
+      case MessageType.Multi:
+        return { ...message, p: this.unmarshalPayload(message.p as R) as R };
+    }
+    return message;
+  }
+
+  private signMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+    if (this.signSalt) {
+      return signMessage<T, R>(message, this.signSalt);
+    }
+    return message;
+  }
+
+  private async doRequest(payload: T, expectResponse: boolean): Promise<AsyncIterableIterator<R> | R | undefined> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
     const source = this.id;
 
     const requestMessage = this.signMessage({
-      t: MessageType.Send,
+      t: MessageType.Request,
       c: reqId,
-      p: this.marshalPayload(payload),
+      p: payload,
       s: source,
-    });
+    }) as RequestMessage<T>;
 
-    const conversation: ConversationSummary = {
+    const conversation: ConversationSummary<T, R> = {
       perspective: ConversationPerspective.Requester,
       request: requestMessage,
       responses: [],
     };
     const start = hrtime();
 
-    const responseQueue = new AsyncQueue<Message<T>>();
+    const responseQueue = new AsyncQueue<ResponseMessage<R>>();
 
     if (expectResponse) {
       responseQueue.maxWaitTime = this.responseTimeout;
@@ -236,13 +259,13 @@ export class MessageConnection<T = unknown> {
 
     if (expectResponse) {
       const iter = responseQueue.iterator();
-      const firstMsg = (await iter.next()).value as Message<T>;
+      const firstMsg = (await iter.next()).value as ResponseMessage<R>;
       conversation.responses.push({ message: firstMsg, time: hrtime(start) });
 
       const onConversation = this.onConversation;
 
       if (firstMsg.t === MessageType.Multi) {
-        return (async function*(): AsyncIterableIterator<T> {
+        return (async function*(): AsyncIterableIterator<R> {
           yield firstMsg.p;
           try {
             for await (const message of responseQueue.iterator()) {
@@ -272,14 +295,14 @@ export class MessageConnection<T = unknown> {
           onConversation(conversation);
         }
         possiblyThrow(firstMsg);
-        return firstMsg.p;
+        return firstMsg.p as R;
       }
     }
   }
 
-  private async handleReceive(message: Message<T>): Promise<void> {
+  private async handleRequest(message: RequestMessage<T>): Promise<void> {
     const source = this.id;
-    const conversation: ConversationSummary = {
+    const conversation: ConversationSummary<T, R> = {
       perspective: ConversationPerspective.Responder,
       request: message,
       responses: [],
@@ -287,8 +310,8 @@ export class MessageConnection<T = unknown> {
     const start = hrtime();
     const requestPayload = message.p;
 
-    const send = (m: Message<T | AnomalyPayload | ErrorPayload | {}>): void => {
-      const signedMessage = this.signMessage({ ...m, p: this.marshalPayload(m.p) });
+    const respond = (m: ResponseMessage<R>): void => {
+      const signedMessage = this.signMessage(this.marshalMessage(m)) as ResponseMessage<R>;
       this.transport.send(signedMessage);
       conversation.responses.push({ message: signedMessage, time: hrtime(start) });
     };
@@ -299,14 +322,14 @@ export class MessageConnection<T = unknown> {
 
     try {
       const result = await this.onReceive(requestPayload);
-      if (typeof result === 'object' && (result as AsyncIterableIterator<T>)[Symbol.asyncIterator]) {
-        for await (const responsePayload of result as AsyncIterableIterator<T>) {
-          send({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
+      if (typeof result === 'object' && (result as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+        for await (const responsePayload of result as AsyncIterableIterator<R>) {
+          respond({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
         }
-        send({ c: message.c, s: source, t: MessageType.End, p: {} });
+        respond({ c: message.c, s: source, t: MessageType.End, p: 'END' });
       } else if (result) {
         const responsePayload = result;
-        send({ p: responsePayload as T, c: message.c, s: source, t: MessageType.Response });
+        respond({ p: responsePayload as R, c: message.c, s: source, t: MessageType.Response });
       } else {
         // kill the async queue
       }
@@ -318,7 +341,7 @@ export class MessageConnection<T = unknown> {
           s: source,
           t: MessageType.Anomaly,
         };
-        send(anomalyMessage);
+        respond(anomalyMessage);
       } else if (err instanceof Error) {
         const errorMessage: ErrorMessage = {
           p: { message: err.message, requestPayload },
@@ -326,7 +349,7 @@ export class MessageConnection<T = unknown> {
           s: source,
           t: MessageType.Error,
         };
-        send(errorMessage);
+        respond(errorMessage);
       } else {
         throw new Error('Errors should only throw instances of Error and Anomaly.');
       }

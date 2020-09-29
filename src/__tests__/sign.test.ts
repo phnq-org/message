@@ -1,4 +1,4 @@
-import { Message, MessageType } from '../MessageTransport';
+import { MessageType, RequestMessage } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 import { signMessage, verifyMessage } from '../sign';
 
@@ -6,8 +6,8 @@ const SALT = 'abcd1234';
 
 describe('sign/verify', (): void => {
   it('should successfully sign and verify a simple message', (): void => {
-    const message: Message = {
-      t: MessageType.Send,
+    const message: RequestMessage<string> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: 'hello',
@@ -23,8 +23,8 @@ describe('sign/verify', (): void => {
   });
 
   it('should throw during verification of a modified signed message', (): void => {
-    const message: Message = {
-      t: MessageType.Send,
+    const message: RequestMessage<string> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: 'hello',
@@ -33,13 +33,15 @@ describe('sign/verify', (): void => {
     const signedMessage = signMessage(message, SALT);
 
     expect(() => {
-      verifyMessage({ ...signedMessage, p: 'goodbye' }, SALT);
+      const doctoredMessage = { ...signedMessage, s: 'wrong source' };
+
+      verifyMessage(doctoredMessage, SALT);
     }).toThrowError();
   });
 
   it('should throw during verification of a message with no signature', (): void => {
-    const message: Message = {
-      t: MessageType.Send,
+    const message: RequestMessage<string> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: 'hello',
@@ -53,8 +55,8 @@ describe('sign/verify', (): void => {
   });
 
   it('should successfully sign and verify a message with object payload', (): void => {
-    const message: Message = {
-      t: MessageType.Send,
+    const message: RequestMessage<{}> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: {
@@ -76,8 +78,8 @@ describe('sign/verify', (): void => {
   });
 
   it('should successfully sign and verify a message with serialized/deserialized message', (): void => {
-    const message: Message = {
-      t: MessageType.Send,
+    const message: RequestMessage<{}> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: {
@@ -126,8 +128,8 @@ describe('sign/verify', (): void => {
       streams.temp.push(20);
     }
 
-    const largeMessage: Message = {
-      t: MessageType.Send,
+    const largeMessage: RequestMessage<{}> = {
+      t: MessageType.Request,
       c: 1,
       s: 'source',
       p: {

@@ -1,13 +1,13 @@
 export enum MessageType {
-  Send = 'send',
-  Error = 'error',
-  Anomaly = 'anomaly',
+  Request = 'request',
   Response = 'response',
   Multi = 'multi',
   End = 'end',
+  Error = 'error',
+  Anomaly = 'anomaly',
 }
 
-export interface Message<T = unknown> {
+interface Message<T> {
   t: MessageType;
   c: number;
   s: string;
@@ -15,27 +15,48 @@ export interface Message<T = unknown> {
   z?: string; // signature
 }
 
-export interface AnomalyPayload {
-  message: string;
-  info: unknown;
-  requestPayload: unknown;
+export interface RequestMessage<T> extends Message<T> {
+  t: MessageType.Request;
 }
 
-export interface AnomalyMessage extends Message<AnomalyPayload> {
+export interface SingleResponseMessage<R> extends Message<R> {
+  t: MessageType.Response;
+}
+
+export interface MultiResponseMessage<R> extends Message<R> {
+  t: MessageType.Multi;
+}
+
+export interface EndMessage extends Message<'END'> {
+  t: MessageType.End;
+}
+
+export interface AnomalyMessage
+  extends Message<{
+    message: string;
+    info: unknown;
+    requestPayload: unknown;
+  }> {
   t: MessageType.Anomaly;
 }
 
-export interface ErrorPayload {
-  message: string;
-  requestPayload: unknown;
-}
-
-export interface ErrorMessage extends Message<ErrorPayload> {
+export interface ErrorMessage
+  extends Message<{
+    message: string;
+    requestPayload: unknown;
+  }> {
   t: MessageType.Error;
 }
 
-export interface MessageTransport {
-  send(message: Message): Promise<void>;
-  onReceive(receive: (message: Message) => void): void;
+export type ResponseMessage<R> =
+  | SingleResponseMessage<R>
+  | MultiResponseMessage<R>
+  | EndMessage
+  | ErrorMessage
+  | AnomalyMessage;
+
+export interface MessageTransport<T, R> {
+  send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void>;
+  onReceive(receive: (message: RequestMessage<T> | ResponseMessage<R>) => void): void;
   close(): Promise<void>;
 }

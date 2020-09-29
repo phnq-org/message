@@ -2,7 +2,7 @@ import { createLogger } from '@phnq/log';
 import hash from 'object-hash';
 import uuid from 'uuid/v4';
 
-import { Message } from './MessageTransport';
+import { RequestMessage, ResponseMessage } from './MessageTransport';
 
 const log = createLogger('sign');
 
@@ -11,15 +11,21 @@ const log = createLogger('sign');
  * affects the hash value. JSON.stringify(payload) has the effect of
  * normalizing the payload.
  */
-const hashMessage = (message: Message, u: string, salt: string): string =>
+const hashMessage = (message: RequestMessage<unknown> | ResponseMessage<unknown>, u: string, salt: string): string =>
   hash({ m: { t: message.t, c: message.c, s: message.s, p: JSON.stringify(message.p), u }, salt });
 
-export const signMessage = <T = unknown>(message: Message<T>, salt: string): Message<T> => {
+export const signMessage = <T, R>(
+  message: RequestMessage<T> | ResponseMessage<R>,
+  salt: string,
+): RequestMessage<T> | ResponseMessage<R> => {
   const u = uuid().replace(/-/g, '');
   return { ...message, z: [u, hashMessage(message, u, salt)].join(':') };
 };
 
-export const verifyMessage = <T = unknown>(message: Message<T>, salt: string): Message<T> => {
+export const verifyMessage = <T, R>(
+  message: RequestMessage<T> | ResponseMessage<R>,
+  salt: string,
+): RequestMessage<T> | ResponseMessage<R> => {
   const { z, ...zLess } = message;
 
   const [u, h] = z ? z.split(':') : [];

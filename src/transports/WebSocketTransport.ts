@@ -2,21 +2,21 @@ import 'ws'; // need to explicitly import this so it gets loaded as a dependency
 
 import WebSocket from 'isomorphic-ws';
 
-import { Message, MessageTransport } from '../MessageTransport';
+import { MessageTransport, RequestMessage, ResponseMessage } from '../MessageTransport';
 import { deserialize, serialize } from '../serialize';
 
-export class ServerWebSocketTransport implements MessageTransport {
+export class ServerWebSocketTransport<T, R> implements MessageTransport<T, R> {
   private readonly socket: WebSocket;
 
   public constructor(socket: WebSocket) {
     this.socket = socket;
   }
 
-  public async send(message: Message): Promise<void> {
+  public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {
     this.socket.send(serialize(message));
   }
 
-  public onReceive(receive: (message: Message) => void): void {
+  public onReceive(receive: (message: RequestMessage<T> | ResponseMessage<R>) => void): void {
     this.socket.addEventListener('message', ({ data }): void => {
       receive(deserialize(data));
     });
@@ -30,19 +30,19 @@ export class ServerWebSocketTransport implements MessageTransport {
   }
 }
 
-export class ClientWebSocketTransport implements MessageTransport {
+export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
   public onClose?: () => void;
 
   private readonly url: string;
   private socket?: WebSocket;
-  private onReceiveFn?: (message: Message<unknown>) => void;
+  private onReceiveFn?: (message: RequestMessage<T> | ResponseMessage<R>) => void;
 
   public constructor(url: string) {
     this.url = url;
     this.socket = this.connect();
   }
 
-  public async send(message: Message<unknown>): Promise<void> {
+  public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {
     if (!this.isOpen()) {
       await this.reconnect();
     }
@@ -54,7 +54,7 @@ export class ClientWebSocketTransport implements MessageTransport {
     }
   }
 
-  public onReceive(onReceiveFn: (message: Message<unknown>) => void): void {
+  public onReceive(onReceiveFn: (message: RequestMessage<T> | ResponseMessage<R>) => void): void {
     this.onReceiveFn = onReceiveFn;
   }
 

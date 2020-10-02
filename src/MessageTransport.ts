@@ -8,10 +8,10 @@ export enum MessageType {
 }
 
 interface Message<T> {
-  t: MessageType;
-  c: number;
-  s: string;
-  p: T;
+  t: MessageType; // message type
+  c: number; // conversation id, for grouping multiple messages together
+  s: string; // source, unique id that identifies the agent sending the message
+  p: T; // payload, the data being sent to another agent
   z?: string; // signature
 }
 

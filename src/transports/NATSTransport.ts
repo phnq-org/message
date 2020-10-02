@@ -30,11 +30,15 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     config.payload = config.payload || Payload.BINARY;
     const [nc, serverInfo] =
       clients.get(hash(config)) ||
-      (await new Promise<[Client, ServerInfo]>(async resolve => {
-        const client = await connect(config);
-        client.on('connect', (_, __, info: ServerInfo) => {
-          resolve([client, info]);
-        });
+      (await new Promise<[Client, ServerInfo]>(async (resolve, reject) => {
+        try {
+          const client = await connect(config);
+          client.on('connect', (_, __, info: ServerInfo) => {
+            resolve([client, info]);
+          });
+        } catch (err) {
+          reject(err);
+        }
       }));
 
     clients.set(hash(config), [nc, serverInfo]);

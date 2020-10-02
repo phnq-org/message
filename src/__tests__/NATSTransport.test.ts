@@ -33,6 +33,20 @@ describe('NATSTransport', (): void => {
     serverConnection.transport.close();
   });
 
+  describe('connecting', () => {
+    it('should throw an error if connection fails', async () => {
+      try {
+        await NATSTransport.create(
+          { servers: ['nats://localhost:4224'] },
+          { publishSubject: 'subject', subscriptions: [] },
+        );
+        fail('should have thrown');
+      } catch (err) {
+        // do nothing
+      }
+    });
+  });
+
   describe('requests with multiple responses', (): void => {
     it('should handle multiple responses with an async iterator', async (): Promise<void> => {
       serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>

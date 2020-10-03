@@ -20,7 +20,7 @@ interface NATSTransportOptions<T, R> {
 }
 
 // Keep track of clients by config hash so they can be shared
-const clients = new Map<string, [Client, ServerInfo]>();
+const clients = new Map<string, [Client, ServerInfo, number]>();
 
 export class NATSTransport<T, R> implements MessageTransport<T, R> {
   public static async create<T, R>(
@@ -28,20 +28,20 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     options: NATSTransportOptions<T, R>,
   ): Promise<NATSTransport<T, R>> {
     config.payload = config.payload || Payload.BINARY;
-    const [nc, serverInfo] =
+    const [nc, serverInfo, refCount] =
       clients.get(hash(config)) ||
-      (await new Promise<[Client, ServerInfo]>(async (resolve, reject) => {
+      (await new Promise<[Client, ServerInfo, number]>(async (resolve, reject) => {
         try {
           const client = await connect(config);
           client.on('connect', (_, __, info: ServerInfo) => {
-            resolve([client, info]);
+            resolve([client, info, 0]);
           });
         } catch (err) {
           reject(err);
         }
       }));
 
-    clients.set(hash(config), [nc, serverInfo]);
+    clients.set(hash(config), [nc, serverInfo, refCount + 1]);
     const natsTransport = new NATSTransport<T, R>(config, nc, options, serverInfo);
     await natsTransport.initialize();
     return natsTransport;
@@ -68,8 +68,18 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   }
 
   public async close(): Promise<void> {
-    this.nc.close();
-    clients.delete(hash(this.config));
+    const clientPoolKey = hash(this.config);
+    const clientInfo = clients.get(clientPoolKey);
+    if (clientInfo) {
+      const [nc, serverInfo, refCount] = clientInfo;
+      if (refCount > 1) {
+        clients.set(clientPoolKey, [nc, serverInfo, refCount - 1]);
+      } else {
+        log('Closing NATS connection: ', this.config);
+        this.nc.close();
+        clients.delete(clientPoolKey);
+      }
+    }
   }
 
   public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {

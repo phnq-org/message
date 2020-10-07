@@ -2,7 +2,7 @@ import http from 'http';
 
 import { MessageConnection } from '../MessageConnection';
 import { WebSocketMessageClient } from '../WebSocketMessageClient';
-import { ConnectionId, WebSocketMessageServer } from '../WebSocketMessageServer';
+import { WebSocketMessageServer } from '../WebSocketMessageServer';
 
 // const wait = (millis: number = 0): Promise<void> =>
 //   new Promise(resolve => {
@@ -19,10 +19,10 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: async (connectionId: ConnectionId, message: string): Promise<AsyncIterableIterator<string>> =>
+        onReceive: async (connection, message) =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
-            expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
+            expect(connection).toBeInstanceOf(MessageConnection);
 
             yield "who's";
             yield 'there';
@@ -63,7 +63,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: async (message: string): Promise<AsyncIterableIterator<string>> =>
+        onReceive: async (_, message) =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
 
@@ -102,10 +102,10 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: async (connectionId: ConnectionId, message: string): Promise<AsyncIterableIterator<string>> =>
+        onReceive: async (connection, message) =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
-            expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
+            expect(connection).toBeInstanceOf(MessageConnection);
 
             yield "who's";
             yield 'there';
@@ -148,10 +148,10 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({
         httpServer,
-        onReceive: async (connectionId: ConnectionId, message: string): Promise<AsyncIterableIterator<string>> =>
+        onReceive: async (connection, message) =>
           (async function*(): AsyncIterableIterator<string> {
             expect(message).toBe('knock knock');
-            expect(wsms.getConnection(connectionId)).toBeInstanceOf(MessageConnection);
+            expect(connection).toBeInstanceOf(MessageConnection);
 
             yield "who's";
             yield 'there';

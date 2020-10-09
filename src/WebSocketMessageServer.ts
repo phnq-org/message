@@ -46,7 +46,7 @@ export class WebSocketMessageServer<T = unknown, R = T> {
       'connection',
       async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
         if (req.url !== path) {
-          socket.close(1008, 'Wrong path');
+          socket.close(1008, `unsupported path: ${req.url}`);
           return;
         }
 

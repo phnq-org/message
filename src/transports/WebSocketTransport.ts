@@ -39,15 +39,10 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
 
   public constructor(url: string) {
     this.url = url;
-    this.socket = this.connect();
   }
 
   public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {
-    if (!this.isOpen()) {
-      await this.reconnect();
-    }
-
-    await this.waitUntilOpen();
+    await this.connect();
 
     if (this.socket) {
       this.socket.send(serialize(message));
@@ -70,42 +65,52 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
   }
 
   public isOpen(): boolean {
-    return (
-      this.socket !== undefined &&
-      (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
-    );
+    return this.socket !== undefined && this.socket.readyState === WebSocket.OPEN;
   }
 
-  public async reconnect(): Promise<void> {
-    this.socket = this.connect();
-    await this.waitUntilOpen();
-  }
+  private async connect(): Promise<void> {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      return;
+    } else if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+      return new Promise<void>(resolve => {
+        this.socket && this.socket.addEventListener('open', resolve);
+      });
+    }
+    await new Promise<void>((resolve, reject) => {
+      try {
+        this.socket = new WebSocket(this.url);
 
-  private async waitUntilOpen(): Promise<void> {
-    return new Promise(resolve => {
-      if (this.socket !== undefined && this.socket.readyState === WebSocket.CONNECTING) {
-        this.socket.addEventListener('open', resolve);
-      } else {
-        resolve();
+        this.socket.addEventListener('message', ({ data }) => {
+          if (this.onReceiveFn) {
+            this.onReceiveFn(deserialize(data));
+          }
+        });
+
+        this.socket.addEventListener('close', () => {
+          if (this.onClose) {
+            this.onClose();
+          }
+          this.socket = undefined;
+        });
+
+        this.socket.addEventListener('open', () => {
+          resolve();
+        });
+
+        this.socket.addEventListener('error', reject);
+      } catch (err) {
+        reject(err);
       }
     });
-  }
 
-  private connect(): WebSocket {
-    const socket = new WebSocket(this.url);
-
-    socket.addEventListener('message', ({ data }) => {
-      if (this.onReceiveFn) {
-        this.onReceiveFn(deserialize(data));
-      }
-    });
-
-    socket.addEventListener('close', () => {
-      if (this.onClose) {
-        this.onClose();
-      }
-      this.socket = undefined;
-    });
-    return socket;
+    if (this.socket && this.socket.readyState === WebSocket.CLOSING) {
+      return new Promise((_, reject) => {
+        if (this.socket) {
+          this.socket.addEventListener('close', event => {
+            reject(new Error(`Socket closed by server (${event.reason})`));
+          });
+        }
+      });
+    }
   }
 }

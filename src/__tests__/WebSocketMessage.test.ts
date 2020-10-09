@@ -53,6 +53,36 @@ describe('MessageConnection', (): void => {
       });
     });
 
+    it('should handle multiple simultaneous lazy connection initiations', async () => {
+      const httpServer = http.createServer();
+      await new Promise((resolve): void => {
+        httpServer.listen({ port: 55556 }, resolve);
+      });
+
+      const wsms = new WebSocketMessageServer<string, string>({ httpServer, path: '/simultaneous-path' });
+      wsms.onReceive = async (_, message) => `you said ${message}`;
+
+      const clientConnection = WebSocketMessageClient.create<string, string>('ws://localhost:55556/simultaneous-path');
+
+      const [r1, r2, r3] = await Promise.all([
+        clientConnection.request('one'),
+        clientConnection.request('two'),
+        clientConnection.request('three'),
+      ]);
+
+      expect(r1).toBe('you said one');
+      expect(r2).toBe('you said two');
+      expect(r3).toBe('you said three');
+
+      await clientConnection.close();
+
+      await wsms.close();
+
+      await new Promise((resolve): void => {
+        httpServer.close(resolve);
+      });
+    });
+
     it('should close the socket if the wrong path is specified', async (): Promise<void> => {
       const httpServer = http.createServer();
       await new Promise((resolve): void => {
@@ -60,23 +90,16 @@ describe('MessageConnection', (): void => {
       });
 
       const wsms = new WebSocketMessageServer({ httpServer, path: '/the-path' });
-      wsms.onReceive = async (_, message) =>
-        (async function*(): AsyncIterableIterator<string> {
-          expect(message).toBe('knock knock');
-
-          yield "who's";
-          yield 'there';
-          yield '?';
-        })();
+      wsms.onReceive = async (_, message) => `you said ${message}`;
 
       const clientConnection = WebSocketMessageClient.create('ws://localhost:55556/the-wrong-path');
 
-      await new Promise((resolve): void => {
-        clientConnection.onClose = () => {
-          resolve();
-          return false;
-        };
-      });
+      try {
+        await clientConnection.request('hello');
+        fail('Should have thrown');
+      } catch (err) {
+        expect(err.message).toBe('Socket closed by server (unsupported path: /the-wrong-path)');
+      }
 
       expect(clientConnection.isOpen()).toBe(false);
 

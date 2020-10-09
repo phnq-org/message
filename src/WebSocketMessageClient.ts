@@ -32,8 +32,4 @@ export class WebSocketMessageClient<T, R> extends MessageConnection<T, R> {
   public set onClose(onClose: () => void) {
     this.onCloseHandlers.add(onClose);
   }
-
-  public async reconnect(): Promise<void> {
-    await (this.transport as ClientWebSocketTransport<T, R>).reconnect();
-  }
 }

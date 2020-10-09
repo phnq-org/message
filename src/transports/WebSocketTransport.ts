@@ -93,11 +93,11 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
           this.socket = undefined;
         });
 
-        this.socket.addEventListener('open', () => {
-          resolve();
-        });
+        this.socket.addEventListener('open', resolve);
 
-        this.socket.addEventListener('error', reject);
+        this.socket.addEventListener('error', event => {
+          reject(new Error(event.message));
+        });
       } catch (err) {
         reject(err);
       }

@@ -17,18 +17,16 @@ describe('MessageConnection', (): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer({
-        httpServer,
-        onReceive: async (connection, message) =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
-            expect(connection).toBeInstanceOf(MessageConnection);
+      const wsms = new WebSocketMessageServer({ httpServer });
+      wsms.onReceive = async (connection, message) =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
+          expect(connection).toBeInstanceOf(MessageConnection);
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-      });
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const clientConnection = WebSocketMessageClient.create('ws://localhost:55556');
 
@@ -61,18 +59,15 @@ describe('MessageConnection', (): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer({
-        httpServer,
-        onReceive: async (_, message) =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
+      const wsms = new WebSocketMessageServer({ httpServer, path: '/the-path' });
+      wsms.onReceive = async (_, message) =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-        path: '/the-path',
-      });
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const clientConnection = WebSocketMessageClient.create('ws://localhost:55556/the-wrong-path');
 
@@ -100,18 +95,16 @@ describe('MessageConnection', (): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer({
-        httpServer,
-        onReceive: async (connection, message) =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
-            expect(connection).toBeInstanceOf(MessageConnection);
+      const wsms = new WebSocketMessageServer({ httpServer });
+      wsms.onReceive = async (connection, message) =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
+          expect(connection).toBeInstanceOf(MessageConnection);
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-      });
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const clientConnection = WebSocketMessageClient.create('ws://localhost:55556');
 
@@ -146,18 +139,16 @@ describe('MessageConnection', (): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
-      const wsms = new WebSocketMessageServer({
-        httpServer,
-        onReceive: async (connection, message) =>
-          (async function*(): AsyncIterableIterator<string> {
-            expect(message).toBe('knock knock');
-            expect(connection).toBeInstanceOf(MessageConnection);
+      const wsms = new WebSocketMessageServer({ httpServer });
+      wsms.onReceive = async (connection, message) =>
+        (async function*(): AsyncIterableIterator<string> {
+          expect(message).toBe('knock knock');
+          expect(connection).toBeInstanceOf(MessageConnection);
 
-            yield "who's";
-            yield 'there';
-            yield '?';
-          })(),
-      });
+          yield "who's";
+          yield 'there';
+          yield '?';
+        })();
 
       const clientConnection1 = WebSocketMessageClient.create<string, string>('ws://localhost:55556');
       const clientConnection2 = WebSocketMessageClient.create<string, string>('ws://localhost:55556');

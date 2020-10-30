@@ -17,7 +17,6 @@
   },
   "main": "index.js",
   "scripts": {
-    "preinstall": "scripts/preinstall.sh",
     "dist": "tsc",
     "postdist": "ts-node scripts/postdist",
     "clean": "rimraf dist",

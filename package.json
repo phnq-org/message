@@ -22,8 +22,8 @@
     "clean": "rimraf dist",
     "test": "jest",
     "lint": "tsc --noEmit && eslint 'src/**/*.{js,ts,tsx}' --quiet --fix",
-    "pretest": "if [ \"$NO_NATS\" != \"1\" ]; then docker run -d --name nats_phnq_message_test -p 4223:4222 nats; fi",
-    "posttest": "if [ \"$NO_NATS\" != \"1\" ]; then docker stop nats_phnq_message_test; docker rm nats_phnq_message_test; fi",
+    "pretest": "if [ \"$CCI\" != \"1\" ]; then docker run -d --name nats_phnq_message_test -p 4223:4222 nats; fi",
+    "posttest": "if [ \"$CCI\" != \"1\" ]; then docker stop nats_phnq_message_test; docker rm nats_phnq_message_test; fi",
     "test:coverage": "jest --testPathIgnorePatterns=NATS --coverage",
     "release:patch": "npm run clean; npm version patch; git push; npm run dist; cd dist; npm publish",
     "release:minor": "npm run clean; npm version minor; git push; npm run dist; cd dist; npm publish"

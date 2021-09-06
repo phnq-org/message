@@ -13,6 +13,7 @@ jobs:
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
       # - image: circleci/mongo:3.4.4
+      - image: nats
 
     working_directory: ~/repo
 
@@ -34,4 +35,4 @@ jobs:
           key: v1-dependencies-{{ checksum "package.json" }}
 
       # run tests!
-      - run: NO_NATS=1 npm t -- --testPathIgnorePatterns=NATS --coverage
+      - run: CCI=1 npm t -- --coverage

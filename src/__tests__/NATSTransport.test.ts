@@ -4,6 +4,8 @@ import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
 import { NATSTransport } from '../transports/NATSTransport';
 
+const isCCI = process.env['CCI'] === '1';
+
 const wait = (millis: number = 0): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, millis);
@@ -15,7 +17,7 @@ describe('NATSTransport', (): void => {
 
   beforeAll(
     async (): Promise<void> => {
-      const config: NatsConnectionOptions = { servers: ['nats://localhost:4223'] };
+      const config: NatsConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
       const signSalt = String(Date.now());
       clientConnection = new MessageConnection<string | undefined, string | undefined>(
         await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
@@ -147,7 +149,7 @@ describe('NATSTransport', (): void => {
         fail('Should have thrown');
       } catch (err) {
         expect(err).toBeInstanceOf(Error);
-        expect(err.message).toEqual('Error: hello');
+        expect((err as Error).message).toEqual('Error: hello');
       }
     });
 
@@ -161,8 +163,8 @@ describe('NATSTransport', (): void => {
         fail('Should have thrown');
       } catch (err) {
         expect(err).toBeInstanceOf(Anomaly);
-        expect(err.message).toEqual('Anomaly: hello');
-        expect(err.info).toEqual({ foo: 'bar' });
+        expect((err as Anomaly).message).toEqual('Anomaly: hello');
+        expect((err as Anomaly).info).toEqual({ foo: 'bar' });
       }
     });
   });

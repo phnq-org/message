@@ -145,7 +145,7 @@ describe('MessageConnection', (): void => {
           fail('Should have thrown');
         } catch (err) {
           expect(err).toBeInstanceOf(Error);
-          expect(err.message).toEqual('Error: hello');
+          expect((err as Error).message).toEqual('Error: hello');
         }
       });
 
@@ -159,8 +159,8 @@ describe('MessageConnection', (): void => {
           fail('Should have thrown');
         } catch (err) {
           expect(err).toBeInstanceOf(Anomaly);
-          expect(err.message).toEqual('Anomaly: hello');
-          expect(err.info).toEqual({ foo: 'bar' });
+          expect((err as Anomaly).message).toEqual('Anomaly: hello');
+          expect((err as Anomaly).info).toEqual({ foo: 'bar' });
         }
       });
     });

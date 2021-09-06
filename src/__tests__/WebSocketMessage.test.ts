@@ -13,7 +13,7 @@ describe('MessageConnection', (): void => {
   describe('with WebSocketTransport', (): void => {
     it('should handle multiple responses with an iterator', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise((resolve): void => {
+      await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
@@ -55,7 +55,7 @@ describe('MessageConnection', (): void => {
 
     it('should handle multiple simultaneous lazy connection initiations', async () => {
       const httpServer = http.createServer();
-      await new Promise((resolve): void => {
+      await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
@@ -85,7 +85,7 @@ describe('MessageConnection', (): void => {
 
     it('should close the socket if the wrong path is specified', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise((resolve): void => {
+      await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
@@ -98,7 +98,7 @@ describe('MessageConnection', (): void => {
         await clientConnection.request('hello');
         fail('Should have thrown');
       } catch (err) {
-        expect(err.message).toBe('Socket closed by server (unsupported path: /the-wrong-path)');
+        expect((err as Error).message).toBe('Socket closed by server (unsupported path: /the-wrong-path)');
       }
 
       expect(clientConnection.isOpen()).toBe(false);
@@ -114,7 +114,7 @@ describe('MessageConnection', (): void => {
 
     it('should re-open the socket on the next request after being closed', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise((resolve): void => {
+      await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
@@ -158,7 +158,7 @@ describe('MessageConnection', (): void => {
 
     it('should share client connections for the same url', async (): Promise<void> => {
       const httpServer = http.createServer();
-      await new Promise((resolve): void => {
+      await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);
       });
 
@@ -179,7 +179,7 @@ describe('MessageConnection', (): void => {
       expect(clientConnection1 === clientConnection2).toBe(true);
 
       await Promise.all([
-        new Promise(async resolve => {
+        new Promise<void>(async resolve => {
           const resps1 = [];
           for await (const resp of await clientConnection1.requestMulti('knock knock')) {
             resps1.push(resp);
@@ -187,7 +187,7 @@ describe('MessageConnection', (): void => {
           expect(resps1).toEqual(["who's", 'there', '?']);
           resolve();
         }),
-        new Promise(async resolve => {
+        new Promise<void>(async resolve => {
           const resps2 = [];
           for await (const resp of await clientConnection2.requestMulti('knock knock')) {
             resps2.push(resp);

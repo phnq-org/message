@@ -55,7 +55,7 @@ describe('sign/verify', (): void => {
   });
 
   it('should successfully sign and verify a message with object payload', (): void => {
-    const message: RequestMessage<{}> = {
+    const message: RequestMessage = {
       t: MessageType.Request,
       c: 1,
       s: 'source',
@@ -78,7 +78,7 @@ describe('sign/verify', (): void => {
   });
 
   it('should successfully sign and verify a message with serialized/deserialized message', (): void => {
-    const message: RequestMessage<{}> = {
+    const message: RequestMessage = {
       t: MessageType.Request,
       c: 1,
       s: 'source',
@@ -128,7 +128,7 @@ describe('sign/verify', (): void => {
       streams.temp.push(20);
     }
 
-    const largeMessage: RequestMessage<{}> = {
+    const largeMessage: RequestMessage = {
       t: MessageType.Request,
       c: 1,
       s: 'source',

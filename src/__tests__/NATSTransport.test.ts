@@ -6,7 +6,7 @@ import { NATSTransport } from '../transports/NATSTransport';
 
 const isCCI = process.env['CCI'] === '1';
 
-const wait = (millis: number = 0): Promise<void> =>
+const wait = (millis = 0): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, millis);
   });
@@ -15,20 +15,18 @@ describe('NATSTransport', (): void => {
   let clientConnection: MessageConnection<string | undefined, string | undefined>;
   let serverConnection: MessageConnection<string | undefined, string | undefined>;
 
-  beforeAll(
-    async (): Promise<void> => {
-      const config: NatsConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
-      const signSalt = String(Date.now());
-      clientConnection = new MessageConnection<string | undefined, string | undefined>(
-        await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
-        { signSalt },
-      );
-      serverConnection = new MessageConnection<string | undefined, string | undefined>(
-        await NATSTransport.create(config, { publishSubject: 's2', subscriptions: ['s1'] }),
-        { signSalt },
-      );
-    },
-  );
+  beforeAll(async (): Promise<void> => {
+    const config: NatsConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
+    const signSalt = String(Date.now());
+    clientConnection = new MessageConnection<string | undefined, string | undefined>(
+      await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
+      { signSalt },
+    );
+    serverConnection = new MessageConnection<string | undefined, string | undefined>(
+      await NATSTransport.create(config, { publishSubject: 's2', subscriptions: ['s1'] }),
+      { signSalt },
+    );
+  });
 
   afterAll((): void => {
     clientConnection.transport.close();
@@ -52,7 +50,7 @@ describe('NATSTransport', (): void => {
   describe('requests with multiple responses', (): void => {
     it('should handle multiple responses with an async iterator', async (): Promise<void> => {
       serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string>> =>
-        (async function*(): AsyncIterableIterator<string> {
+        (async function* (): AsyncIterableIterator<string> {
           expect(message).toBe('knock knock');
 
           yield "who's";
@@ -102,7 +100,7 @@ describe('NATSTransport', (): void => {
 
     it('should return the first response if multiple are provided', async (): Promise<void> => {
       serverConnection.onReceive = async (message): Promise<AsyncIterableIterator<string | undefined>> =>
-        (async function*(): AsyncIterableIterator<string | undefined> {
+        (async function* (): AsyncIterableIterator<string | undefined> {
           yield 'hey';
           yield 'there';
           yield message;

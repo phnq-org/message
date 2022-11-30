@@ -40,7 +40,7 @@ import { signMessage, verifyMessage } from './sign';
 
 const log = createLogger('MessageConnection');
 
-const idIterator = (function*(): IterableIterator<number> {
+const idIterator = (function* (): IterableIterator<number> {
   let i = 0;
   while (true) {
     yield ++i;
@@ -49,10 +49,10 @@ const idIterator = (function*(): IterableIterator<number> {
 
 const possiblyThrow = (message: ResponseMessage<unknown>): void => {
   switch (message.t) {
-    case MessageType.Anomaly:
+    case MessageType.Anomaly: {
       const anomalyMessage = message as AnomalyMessage;
       throw new Anomaly(anomalyMessage.p.message, anomalyMessage.p.info);
-
+    }
     case MessageType.Error:
       throw new Error((message as ErrorMessage).p.message);
   }
@@ -188,7 +188,7 @@ export class MessageConnection<T, R> {
     if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
       return resp as AsyncIterableIterator<R>;
     } else {
-      return (async function*(): AsyncIterableIterator<R> {
+      return (async function* (): AsyncIterableIterator<R> {
         yield resp as R;
       })();
     }
@@ -265,7 +265,7 @@ export class MessageConnection<T, R> {
       const onConversation = this.onConversation;
 
       if (firstMsg.t === MessageType.Multi) {
-        return (async function*(): AsyncIterableIterator<R> {
+        return (async function* (): AsyncIterableIterator<R> {
           yield firstMsg.p;
           try {
             for await (const message of responseQueue.iterator()) {

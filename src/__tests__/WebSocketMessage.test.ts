@@ -19,7 +19,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({ httpServer });
       wsms.onReceive = async (connection, message) =>
-        (async function*(): AsyncIterableIterator<string> {
+        (async function* (): AsyncIterableIterator<string> {
           expect(message).toBe('knock knock');
           expect(connection).toBeInstanceOf(MessageConnection);
 
@@ -120,7 +120,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({ httpServer });
       wsms.onReceive = async (connection, message) =>
-        (async function*(): AsyncIterableIterator<string> {
+        (async function* (): AsyncIterableIterator<string> {
           expect(message).toBe('knock knock');
           expect(connection).toBeInstanceOf(MessageConnection);
 
@@ -164,7 +164,7 @@ describe('MessageConnection', (): void => {
 
       const wsms = new WebSocketMessageServer({ httpServer });
       wsms.onReceive = async (connection, message) =>
-        (async function*(): AsyncIterableIterator<string> {
+        (async function* (): AsyncIterableIterator<string> {
           expect(message).toBe('knock knock');
           expect(connection).toBeInstanceOf(MessageConnection);
 
@@ -179,22 +179,20 @@ describe('MessageConnection', (): void => {
       expect(clientConnection1 === clientConnection2).toBe(true);
 
       await Promise.all([
-        new Promise<void>(async resolve => {
+        (async () => {
           const resps1 = [];
           for await (const resp of await clientConnection1.requestMulti('knock knock')) {
             resps1.push(resp);
           }
           expect(resps1).toEqual(["who's", 'there', '?']);
-          resolve();
-        }),
-        new Promise<void>(async resolve => {
+        })(),
+        (async () => {
           const resps2 = [];
           for await (const resp of await clientConnection2.requestMulti('knock knock')) {
             resps2.push(resp);
           }
           expect(resps2).toEqual(["who's", 'there', '?']);
-          resolve();
-        }),
+        })(),
       ]);
 
       await clientConnection1.close();

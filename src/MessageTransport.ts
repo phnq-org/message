@@ -15,7 +15,7 @@ interface Message<T> {
   z?: string; // signature
 }
 
-export interface RequestMessage<T> extends Message<T> {
+export interface RequestMessage<T = Record<string, unknown>> extends Message<T> {
   t: MessageType.Request;
 }
 

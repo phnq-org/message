@@ -42,27 +42,23 @@ export class WebSocketMessageServer<T = unknown, R = T> {
   }
 
   private start(path: string): void {
-    this.wss.on(
-      'connection',
-      async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
-        if (req.url !== path) {
-          socket.close(1008, `unsupported path: ${req.url}`);
-          return;
-        }
+    this.wss.on('connection', async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
+      if (req.url !== path) {
+        socket.close(1008, `unsupported path: ${req.url}`);
+        return;
+      }
 
-        const connection = new MessageConnection<T, R>(new ServerWebSocketTransport<T, R>(socket));
+      const connection = new MessageConnection<T, R>(new ServerWebSocketTransport<T, R>(socket));
 
-        this.connections.set(connection.id, connection);
+      this.connections.set(connection.id, connection);
 
-        connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> =>
-          this.onReceive(connection, message);
+      connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> => this.onReceive(connection, message);
 
-        await this.onConnect(connection, req);
+      await this.onConnect(connection, req);
 
-        socket.addEventListener('close', () => {
-          this.connections.delete(connection.id);
-        });
-      },
-    );
+      socket.addEventListener('close', () => {
+        this.connections.delete(connection.id);
+      });
+    });
   }
 }

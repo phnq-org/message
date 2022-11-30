@@ -19,11 +19,15 @@ export class DirectTransport<T, R> implements MessageTransport<T, R> {
     this.receive = receive;
   }
 
-  private receive: (message: RequestMessage<T> | ResponseMessage<R>) => void = (): void => {};
+  private receive: (message: RequestMessage<T> | ResponseMessage<R>) => void = (): void => {
+    // no-op
+  };
 
   private handleReceive(message: RequestMessage<T> | ResponseMessage<R>): void {
     this.receive(message);
   }
 
-  public async close(): Promise<void> {}
+  public async close(): Promise<void> {
+    // no-op
+  }
 }

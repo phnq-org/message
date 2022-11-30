@@ -1,4 +1,4 @@
-import { NatsConnectionOptions } from 'ts-nats';
+import { ConnectionOptions } from 'nats';
 
 import { Anomaly } from '../errors';
 import { MessageConnection } from '../MessageConnection';
@@ -16,7 +16,7 @@ describe('NATSTransport', (): void => {
   let serverConnection: MessageConnection<string | undefined, string | undefined>;
 
   beforeAll(async (): Promise<void> => {
-    const config: NatsConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
+    const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
     const signSalt = String(Date.now());
     clientConnection = new MessageConnection<string | undefined, string | undefined>(
       await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),

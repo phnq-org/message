@@ -1,6 +1,6 @@
 import { createLogger } from '@phnq/log';
 import hash from 'object-hash';
-import uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 import { RequestMessage, ResponseMessage } from './MessageTransport';
 

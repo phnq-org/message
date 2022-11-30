@@ -96,7 +96,7 @@ describe('sign/verify', (): void => {
     expect(signedMessage.z).toBeTruthy();
 
     expect(() => {
-      verifyMessage(deserialize(serialize(signedMessage)), SALT);
+      verifyMessage(deserialize(serialize(signedMessage)), SALT) as typeof signedMessage;
     }).not.toThrowError();
   });
 
@@ -141,7 +141,7 @@ describe('sign/verify', (): void => {
     expect(signedMessage.z).toBeTruthy();
 
     expect(() => {
-      const serDeser = deserialize(serialize(signedMessage));
+      const serDeser = deserialize(serialize(signedMessage)) as typeof signedMessage;
       verifyMessage(serDeser, SALT);
     }).not.toThrowError();
   });

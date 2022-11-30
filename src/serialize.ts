@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export const annotate = (val: any): any => {
+// /* eslint-disable @typescript-eslint/no-explicit-any */
+export const annotate = (val: unknown): unknown => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(annotate);
@@ -11,11 +11,12 @@ export const annotate = (val: any): any => {
   }
 
   if (val && typeof val === 'object') {
-    const obj: { [index: string]: any } = {};
+    const srcObj = val as Record<string, unknown>;
+    const destObj: Record<string, unknown> = {};
     Object.keys(val).forEach((k: string) => {
-      obj[k] = annotate(val[k]);
+      destObj[k] = annotate(srcObj[k]);
     });
-    return obj;
+    return destObj;
   }
 
   return val;
@@ -23,27 +24,28 @@ export const annotate = (val: any): any => {
 
 const DATE_RE = /^(.+)@@@D$/;
 
-export const deannotate = (val: any): any => {
+export const deannotate = (val: unknown): unknown => {
   if (val instanceof Array) {
     const arr = val;
     return arr.map(deannotate);
   }
 
-  const dateM = DATE_RE.exec(val);
+  const dateM = typeof val === 'string' ? DATE_RE.exec(val) : undefined;
   if (dateM) {
     return new Date(dateM[1]);
   }
 
   if (val && typeof val === 'object') {
-    const obj = val;
-    Object.keys(obj).forEach(k => {
-      obj[k] = deannotate(obj[k]);
+    const srcObj = val as Record<string, unknown>;
+    const destObj: Record<string, unknown> = {};
+    Object.keys(srcObj).forEach(k => {
+      destObj[k] = deannotate(srcObj[k]);
     });
-    return obj;
+    return destObj;
   }
 
   return val;
 };
 
-export const serialize = (val: any): string => JSON.stringify(annotate(val));
-export const deserialize = (str: string): any => deannotate(JSON.parse(str));
+export const serialize = (val: unknown): string => JSON.stringify(annotate(val));
+export const deserialize = <T>(str: string): T => deannotate(JSON.parse(str)) as T;

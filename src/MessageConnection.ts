@@ -1,7 +1,7 @@
 import { createLogger } from '@phnq/log';
 import { AsyncQueue } from '@phnq/streams';
 import hrtime from 'browser-process-hrtime';
-import uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 import { Anomaly } from './errors';
 import {

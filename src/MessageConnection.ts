@@ -342,16 +342,15 @@ export class MessageConnection<T, R> {
           t: MessageType.Anomaly,
         };
         respond(anomalyMessage);
-      } else if (err instanceof Error) {
+      } else {
+        const errMessage = (err as { message?: string }).message || String(err);
         const errorMessage: ErrorMessage = {
-          p: { message: err.message, requestPayload },
+          p: { message: errMessage, requestPayload },
           c: message.c,
           s: source,
           t: MessageType.Error,
         };
         respond(errorMessage);
-      } else {
-        throw new Error('Errors should only throw instances of Error and Anomaly.');
       }
     } finally {
       if (this.onConversation) {

@@ -56,7 +56,7 @@ export class WebSocketMessageServer<T = unknown, R = T> {
 
       await this.onConnect(connection, req);
 
-      socket.addEventListener('close', () => {
+      socket.addListener('close', () => {
         this.connections.delete(connection.id);
       });
     });

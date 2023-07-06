@@ -17,14 +17,14 @@ export class ServerWebSocketTransport<T, R> implements MessageTransport<T, R> {
   }
 
   public onReceive(receive: (message: RequestMessage<T> | ResponseMessage<R>) => void): void {
-    this.socket.addEventListener('message', ({ data }): void => {
-      receive(deserialize(data));
+    this.socket.addListener('message', data => {
+      receive(deserialize(data.toString()));
     });
   }
 
   public async close(): Promise<void> {
     return new Promise(resolve => {
-      this.socket.addEventListener('close', resolve);
+      this.socket.addListener('close', resolve);
       this.socket.close();
     });
   }
@@ -56,7 +56,7 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
   public async close(): Promise<void> {
     return new Promise(resolve => {
       if (this.socket) {
-        this.socket.addEventListener('close', resolve);
+        this.socket.addListener('close', resolve);
         this.socket.close(1000);
       } else {
         resolve();
@@ -73,29 +73,29 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
       return;
     } else if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
       return new Promise<void>(resolve => {
-        this.socket && this.socket.addEventListener('open', resolve);
+        this.socket && this.socket.addListener('open', resolve);
       });
     }
     await new Promise<void>((resolve, reject) => {
       try {
         this.socket = new WebSocket(this.url);
 
-        this.socket.addEventListener('message', ({ data }) => {
+        this.socket.addListener('message', data => {
           if (this.onReceiveFn) {
-            this.onReceiveFn(deserialize(data));
+            this.onReceiveFn(deserialize(data.toString()));
           }
         });
 
-        this.socket.addEventListener('close', () => {
+        this.socket.addListener('close', () => {
           if (this.onClose) {
             this.onClose();
           }
           this.socket = undefined;
         });
 
-        this.socket.addEventListener('open', resolve);
+        this.socket.addListener('open', resolve);
 
-        this.socket.addEventListener('error', event => {
+        this.socket.addListener('error', event => {
           reject(new Error(event.message));
         });
       } catch (err) {
@@ -106,8 +106,8 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
     if (this.socket && this.socket.readyState === WebSocket.CLOSING) {
       return new Promise((_, reject) => {
         if (this.socket) {
-          this.socket.addEventListener('close', event => {
-            reject(new Error(`Socket closed by server (${event.reason})`));
+          this.socket.addListener('close', (_, message) => {
+            reject(new Error(`Socket closed by server (${message})`));
           });
         }
       });

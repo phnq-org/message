@@ -56,7 +56,7 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
   public async close(): Promise<void> {
     return new Promise(resolve => {
       if (this.socket) {
-        this.socket.addListener('close', resolve);
+        this.socket.addEventListener('close', resolve);
         this.socket.close(1000);
       } else {
         resolve();
@@ -73,30 +73,30 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
       return;
     } else if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
       return new Promise<void>(resolve => {
-        this.socket && this.socket.addListener('open', resolve);
+        this.socket && this.socket.addEventListener('open', resolve);
       });
     }
     await new Promise<void>((resolve, reject) => {
       try {
         this.socket = new WebSocket(this.url);
 
-        this.socket.addListener('message', data => {
+        this.socket.addEventListener('message', event => {
           if (this.onReceiveFn) {
-            this.onReceiveFn(deserialize(data.toString()));
+            this.onReceiveFn(deserialize(event.data.toString()));
           }
         });
 
-        this.socket.addListener('close', () => {
+        this.socket.addEventListener('close', () => {
           if (this.onClose) {
             this.onClose();
           }
           this.socket = undefined;
         });
 
-        this.socket.addListener('open', resolve);
+        this.socket.addEventListener('open', resolve);
 
-        this.socket.addListener('error', event => {
-          reject(new Error(event.message));
+        this.socket.addEventListener('error', event => {
+          reject(new Error(event.error.message));
         });
       } catch (err) {
         reject(err);
@@ -106,8 +106,8 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
     if (this.socket && this.socket.readyState === WebSocket.CLOSING) {
       return new Promise((_, reject) => {
         if (this.socket) {
-          this.socket.addListener('close', (_, message) => {
-            reject(new Error(`Socket closed by server (${message})`));
+          this.socket.addEventListener('close', event => {
+            reject(new Error(`Socket closed by server (${event.reason})`));
           });
         }
       });

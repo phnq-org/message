@@ -112,6 +112,16 @@ describe('MessageConnection', (): void => {
       });
     });
 
+    it('should throw an error if the client cannot connect to the server', async (): Promise<void> => {
+      try {
+        const clientConnection = WebSocketMessageClient.create('ws://localhost:59999/some-path');
+        await clientConnection.request('hello');
+        fail('Should have thrown');
+      } catch (err) {
+        expect((err as Error).message).toContain('Socket error (ws://localhost:59999/some-path)');
+      }
+    });
+
     it('should re-open the socket on the next request after being closed', async (): Promise<void> => {
       const httpServer = http.createServer();
       await new Promise<void>((resolve): void => {

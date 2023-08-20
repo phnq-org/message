@@ -96,10 +96,14 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
         this.socket.addEventListener('open', resolve);
 
         this.socket.addEventListener('error', event => {
-          reject(new Error(event.error.message));
+          const errorMessage = `Socket error (${this.url}): ${event.error.message}`;
+          reject(new Error(errorMessage));
         });
       } catch (err) {
-        reject(err);
+        const errorMessage = `Error creating WebSocket (${this.url}): ${
+          err instanceof Error ? err.message : String(err)
+        }`;
+        reject(new Error(errorMessage));
       }
     });
 

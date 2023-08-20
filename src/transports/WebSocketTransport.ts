@@ -96,7 +96,7 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
         this.socket.addEventListener('open', resolve);
 
         this.socket.addEventListener('error', event => {
-          const errorMessage = `Socket error (${this.url}): ${event.error.message}`;
+          const errorMessage = `Socket error (${this.url}): ${event?.error?.message || 'unknown error'}`;
           reject(new Error(errorMessage));
         });
       } catch (err) {

@@ -1,5 +1,5 @@
 import { createLogger } from '@phnq/log';
-import { connect, ConnectionOptions, JSONCodec, NatsConnection } from 'nats';
+import { connect, ConnectionOptions, JSONCodec, NatsConnection, SubscriptionOptions } from 'nats';
 import hash from 'object-hash';
 import { v4 as uuid } from 'uuid';
 
@@ -15,7 +15,7 @@ const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
 type SubjectResolver<T, R> = (message: RequestMessage<T> | ResponseMessage<R>) => string;
 
 interface NATSTransportOptions<T, R> {
-  subscriptions: string[];
+  subscriptions: (string | { subject: string; options: SubscriptionOptions })[];
   publishSubject: string | SubjectResolver<T, R>;
 }
 
@@ -115,8 +115,10 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   }
 
   private initialize(): void {
-    this.options.subscriptions.forEach(async subject => {
-      const sub = this.nc.subscribe(subject);
+    this.options.subscriptions.forEach(async subscription => {
+      const subject = typeof subscription === 'string' ? subscription : subscription.subject;
+      const options = typeof subscription === 'string' ? undefined : subscription.options;
+      const sub = this.nc.subscribe(subject, options);
       for await (const msg of sub) {
         if (this.receiveHandler) {
           const msgData = msg.data;

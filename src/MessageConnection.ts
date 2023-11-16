@@ -194,8 +194,8 @@ export class MessageConnection<T, R> {
     }
   }
 
-  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<R> | R> {
-    return this.doRequest(data, expectResponse) as Promise<AsyncIterableIterator<R> | R>;
+  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<R> | R | undefined> {
+    return this.doRequest(data, expectResponse);
   }
 
   private marshalMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {

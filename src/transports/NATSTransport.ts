@@ -1,4 +1,5 @@
 import { createLogger } from '@phnq/log';
+import { get } from 'http';
 import { connect, ConnectionOptions, JSONCodec, NatsConnection, SubscriptionOptions } from 'nats';
 import hash from 'object-hash';
 import { v4 as uuid } from 'uuid';
@@ -11,6 +12,22 @@ const log = createLogger('NATSTransport');
 const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === '1';
 
 const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
+
+interface NATSTransportConnectionOptions extends ConnectionOptions {
+  monitorUrl?: string;
+}
+
+interface NATSConnection {
+  name?: string;
+  lang: string;
+  version: string;
+  subscriptions: number;
+  uptime: string;
+  ip: string;
+  cid: number;
+  port: number;
+  rtt: string;
+}
 
 type SubjectResolver<T, R> = (message: RequestMessage<T> | ResponseMessage<R>) => string;
 
@@ -26,7 +43,7 @@ const JSON_CODEC = JSONCodec();
 
 export class NATSTransport<T, R> implements MessageTransport<T, R> {
   public static async create<T, R>(
-    config: ConnectionOptions,
+    config: NATSTransportConnectionOptions,
     options: NATSTransportOptions<T, R>,
   ): Promise<NATSTransport<T, R>> {
     const [nc, refCount] = clients.get(hash(config)) || [await connect(config), 0];
@@ -36,7 +53,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     return natsTransport;
   }
 
-  private config: ConnectionOptions;
+  private config: NATSTransportConnectionOptions;
   private nc: NatsConnection;
   private options: NATSTransportOptions<T, R>;
   private maxPayload: number;
@@ -44,7 +61,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   private subjectById = new Map<number, string>();
   private chunkedMessages = new Map<string, Uint8Array[]>();
 
-  private constructor(config: ConnectionOptions, nc: NatsConnection, options: NATSTransportOptions<T, R>) {
+  private constructor(config: NATSTransportConnectionOptions, nc: NatsConnection, options: NATSTransportOptions<T, R>) {
     this.config = config;
     this.nc = nc;
     this.options = options;
@@ -67,6 +84,25 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
         clients.delete(clientPoolKey);
       }
     }
+  }
+
+  public async getConnections(): Promise<NATSConnection[]> {
+    if (!this.config.monitorUrl) {
+      throw new Error('monitorUrl not set');
+    }
+
+    return new Promise<NATSConnection[]>(resolve => {
+      get([this.config.monitorUrl, 'connz'].join('/'), res => {
+        const chunks: Uint8Array[] = [];
+        res.on('data', (chunk: Uint8Array) => {
+          chunks.push(chunk);
+        });
+        res.on('end', () => {
+          const { connections } = JSON.parse(Buffer.concat(chunks).toString()) as { connections: NATSConnection[] };
+          resolve(connections);
+        });
+      });
+    });
   }
 
   public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {

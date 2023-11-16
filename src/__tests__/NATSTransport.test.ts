@@ -14,17 +14,23 @@ const wait = (millis = 0): Promise<void> =>
 describe('NATSTransport', (): void => {
   let clientConnection: MessageConnection<string | undefined, string | undefined>;
   let serverConnection: MessageConnection<string | undefined, string | undefined>;
+  let monitorTransport: NATSTransport<string, string>;
 
   beforeAll(async (): Promise<void> => {
     const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
+    const monitorUrl = `http://localhost:${isCCI ? 8222 : 8223}`;
     const signSalt = String(Date.now());
     clientConnection = new MessageConnection<string | undefined, string | undefined>(
-      await NATSTransport.create(config, { publishSubject: 's1', subscriptions: ['s2'] }),
+      await NATSTransport.create({ ...config, name: 'client' }, { publishSubject: 's1', subscriptions: ['s2'] }),
       { signSalt },
     );
     serverConnection = new MessageConnection<string | undefined, string | undefined>(
-      await NATSTransport.create(config, { publishSubject: 's2', subscriptions: ['s1'] }),
+      await NATSTransport.create({ ...config, name: 'server' }, { publishSubject: 's2', subscriptions: ['s1'] }),
       { signSalt },
+    );
+    monitorTransport = await NATSTransport.create(
+      { ...config, monitorUrl, name: 'monitor' },
+      { publishSubject: 's3', subscriptions: ['s3'] },
     );
   });
 
@@ -187,6 +193,16 @@ describe('NATSTransport', (): void => {
       const resp = await clientConnection.requestOne('hello');
 
       expect(resp).toEqual(bigRandomString);
+    });
+  });
+
+  describe('monitoring', () => {
+    it('should return the list of connections', async () => {
+      const conns = await monitorTransport.getConnections();
+      const names = new Set(conns.map(c => c.name));
+      expect(names.has('client')).toBeTruthy();
+      expect(names.has('server')).toBeTruthy();
+      expect(names.has('monitor')).toBeTruthy();
     });
   });
 });

@@ -37,6 +37,10 @@ export class WebSocketMessageServer<T = unknown, R = T, A = never> {
     return this.connectionsById.get(id);
   }
 
+  public get connections(): MessageConnection<T, R, A>[] {
+    return [...this.connectionsById.values()];
+  }
+
   public async close(): Promise<void> {
     await new Promise((resolve, reject): void => {
       try {

@@ -14,12 +14,15 @@ const wait = (millis = 0): Promise<void> =>
 describe('NATSTransport', (): void => {
   let clientConnection: MessageConnection<string | undefined, string | undefined>;
   let serverConnection: MessageConnection<string | undefined, string | undefined>;
+  let clientObjectConnection: MessageConnection<object, object>;
+  let serverObjectConnection: MessageConnection<object, object>;
   let monitorTransport: NATSTransport<string, string>;
 
   beforeAll(async (): Promise<void> => {
     const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
     const monitorUrl = `http://localhost:${isCCI ? 8222 : 8223}`;
     const signSalt = String(Date.now());
+
     clientConnection = new MessageConnection<string | undefined, string | undefined>(
       await NATSTransport.create({ ...config, name: 'client' }, { publishSubject: 's1', subscriptions: ['s2'] }),
       { signSalt },
@@ -28,6 +31,22 @@ describe('NATSTransport', (): void => {
       await NATSTransport.create({ ...config, name: 'server' }, { publishSubject: 's2', subscriptions: ['s1'] }),
       { signSalt },
     );
+
+    clientObjectConnection = new MessageConnection<object, object>(
+      await NATSTransport.create(
+        { ...config, name: 'objectclient' },
+        { publishSubject: 'so1', subscriptions: ['so2'] },
+      ),
+      { signSalt },
+    );
+    serverObjectConnection = new MessageConnection<object, object>(
+      await NATSTransport.create(
+        { ...config, name: 'objectserver' },
+        { publishSubject: 'so2', subscriptions: ['so1'] },
+      ),
+      { signSalt },
+    );
+
     monitorTransport = await NATSTransport.create(
       { ...config, monitorUrl, name: 'monitor' },
       { publishSubject: 's3', subscriptions: ['s3'] },
@@ -203,6 +222,24 @@ describe('NATSTransport', (): void => {
       expect(names.has('client')).toBeTruthy();
       expect(names.has('server')).toBeTruthy();
       expect(names.has('monitor')).toBeTruthy();
+    });
+  });
+
+  describe('serialization/unserialization', () => {
+    it('should correctly pass a date object', async (): Promise<void> => {
+      const now = new Date();
+
+      serverObjectConnection.onReceive = async (message): Promise<object> => {
+        const { date } = message as { date: Date };
+        date.setSeconds(date.getSeconds() + 1);
+        return { date };
+      };
+
+      const resp = await clientObjectConnection.requestOne({ date: now });
+
+      const { date } = resp as { date: Date };
+
+      expect(date.getTime()).toEqual(now.getTime() + 1000);
     });
   });
 });

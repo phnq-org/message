@@ -77,7 +77,7 @@ interface MessageConnectionOptions<T, R> {
   unmarshalPayload?: (payload: T | R) => T | R;
 }
 
-export class MessageConnection<T, R> {
+export class MessageConnection<T, R, A = never> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
   public readonly transport: MessageTransport<T, R>;
@@ -85,7 +85,7 @@ export class MessageConnection<T, R> {
   private signSalt?: string;
   private marshalPayload: (payload: T | R) => T | R;
   private unmarshalPayload: (payload: T | R) => T | R;
-  private data = new Map<string, unknown>();
+  private attributes = new Map<keyof A, A[keyof A]>();
 
   public onReceive?: (message: T) => Promise<R | AsyncIterableIterator<R> | void>;
   public onConversation?: (c: ConversationSummary<T, R>) => void;
@@ -141,8 +141,8 @@ export class MessageConnection<T, R> {
     return this.connId;
   }
 
-  public getData<D = unknown>(key: string): D {
-    return this.data.get(key) as D;
+  public getAttribute<K extends keyof A>(key: K): A[K] | undefined {
+    return this.attributes.get(key) as A[K] | undefined;
   }
 
   /**
@@ -151,12 +151,12 @@ export class MessageConnection<T, R> {
    * @param key the key
    * @param value the value
    */
-  public setData(key: string, value: unknown): void {
-    this.data.set(key, value);
+  public setAttribute<K extends keyof A>(key: K, value: A[K]): void {
+    this.attributes.set(key, value);
   }
 
-  public deleteData(key: string): void {
-    this.data.delete(key);
+  public deleteAttribute<K extends keyof A>(key: K): void {
+    this.attributes.delete(key);
   }
 
   public async send(data: T): Promise<void> {

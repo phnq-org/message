@@ -3,14 +3,9 @@ import { ConversationPerspective, ConversationSummary, MessageConnection } from 
 import { MessageType, ResponseMessage } from '../MessageTransport';
 import { DirectTransport } from '../transports/DirectTransport';
 
-interface ConnInfo {
-  bubba: string;
-  num: number;
-}
-
 const serverTransport = new DirectTransport<string, string>();
 const serverConnection = new MessageConnection<string, string>(serverTransport);
-const clientConnection = new MessageConnection<string, string, ConnInfo>(serverTransport.getConnectedTransport());
+const clientConnection = new MessageConnection<string, string>(serverTransport.getConnectedTransport());
 
 const wait = (millis = 0): Promise<void> =>
   new Promise((resolve): void => {

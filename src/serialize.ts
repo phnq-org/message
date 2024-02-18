@@ -1,28 +1,13 @@
-// /* eslint-disable @typescript-eslint/no-explicit-any */
 export const annotate = (val: unknown): unknown => {
-  if (val instanceof Array) {
-    const arr = val;
-    return arr.map(annotate);
-  }
-
-  if (val instanceof Date) {
-    const date = val;
-    return `${date.toISOString()}@@@D`;
-  }
-
-  if (val && typeof val === 'object') {
-    const srcObj = val as Record<string, unknown>;
-    const destObj: Record<string, unknown> = {};
-    Object.keys(val).forEach((k: string) => {
-      destObj[k] = annotate(srcObj[k]);
-    });
-    return destObj;
-  }
-
+  /**
+   * This is just a pass through no-op function.
+   * Only dates are needed to be handled and JSON.stringify serializes dates to
+   * the ISO 8601 by default.
+   */
   return val;
 };
 
-const DATE_RE = /^(.+)@@@D$/;
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)$/gm;
 
 export const deannotate = (val: unknown): unknown => {
   if (val instanceof Array) {
@@ -30,9 +15,8 @@ export const deannotate = (val: unknown): unknown => {
     return arr.map(deannotate);
   }
 
-  const dateM = typeof val === 'string' ? DATE_RE.exec(val) : undefined;
-  if (dateM) {
-    return new Date(dateM[1]);
+  if (typeof val === 'string' && val.match(DATE_RE)) {
+    return new Date(val);
   }
 
   if (val && typeof val === 'object') {

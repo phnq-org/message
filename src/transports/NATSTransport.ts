@@ -13,7 +13,7 @@ const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === '1';
 
 const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
 
-interface NATSTransportConnectionOptions extends ConnectionOptions {
+export interface NATSTransportConnectionOptions extends ConnectionOptions {
   monitorUrl?: string;
   /**
    * Sets the maximum count of per-server initial connect attempts before giving up

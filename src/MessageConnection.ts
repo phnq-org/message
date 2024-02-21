@@ -69,7 +69,7 @@ export interface ConversationSummary<T, R> {
   responses: { message: ResponseMessage<R>; time: [number, number] }[];
 }
 
-const DEFAULT_RESPONSE_TIMEOUT = 5000;
+const DEFAULT_RESPONSE_TIMEOUT = 30000;
 
 interface MessageConnectionOptions<T, R> {
   signSalt?: string;

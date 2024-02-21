@@ -15,6 +15,20 @@ const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
 
 interface NATSTransportConnectionOptions extends ConnectionOptions {
   monitorUrl?: string;
+  /**
+   * Sets the maximum count of per-server initial connect attempts before giving up
+   * and throwing an error.
+   * Set to `-1` to never give up.
+   *
+   * @default 1
+   */
+  maxConnectAttempts?: number;
+  /**
+   * Set the number of millisecods between initial connect attempts.
+   *
+   * @default 2000 millis
+   */
+  connectTimeWait?: number;
 }
 
 interface NATSConnection {
@@ -41,12 +55,36 @@ const clients = new Map<string, [NatsConnection, number]>();
 
 const JSON_CODEC = JSONCodec();
 
+const connectToNats = async (config: NATSTransportConnectionOptions): Promise<NatsConnection> => {
+  const maxConnectAttempts = config.maxConnectAttempts || 1;
+  const connectTimeWait = config.connectTimeWait || 2000;
+  let connectAttempts = 0;
+
+  while (maxConnectAttempts === -1 || connectAttempts < maxConnectAttempts) {
+    try {
+      return await connect(config);
+    } catch (err) {
+      if (maxConnectAttempts === 1) {
+        throw err;
+      }
+      log.error('NATS connection failed: ', err);
+      log('Retrying in %d ms', connectTimeWait);
+      await sleep(connectTimeWait);
+    }
+
+    connectAttempts += 1;
+  }
+  throw new Error(`NATS connection failed after ${connectAttempts} attempts`);
+};
+
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
 export class NATSTransport<T, R> implements MessageTransport<T, R> {
   public static async create<T, R>(
     config: NATSTransportConnectionOptions,
     options: NATSTransportOptions<T, R>,
   ): Promise<NATSTransport<T, R>> {
-    const [nc, refCount] = clients.get(hash(config)) || [await connect(config), 0];
+    const [nc, refCount] = clients.get(hash(config)) || [await connectToNats(config), 0];
     clients.set(hash(config), [nc, refCount + 1]);
     const natsTransport = new NATSTransport<T, R>(config, nc, options);
     natsTransport.initialize();

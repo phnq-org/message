@@ -59,10 +59,10 @@ describe('NATSTransport', (): void => {
   });
 
   describe('connecting', () => {
-    it('should throw an error if connection fails', async () => {
+    it('should throw an error if connection fails (maxConnectAttempts: 1)', async () => {
       try {
         await NATSTransport.create(
-          { servers: ['nats://localhost:4224'] },
+          { servers: ['nats://localhost:4224'], maxConnectAttempts: 1 },
           { publishSubject: 'subject', subscriptions: [] },
         );
         fail('should have thrown');

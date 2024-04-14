@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import WebSocket from 'isomorphic-ws';
 
 import { MessageConnection } from './MessageConnection';
@@ -16,7 +17,7 @@ type ReceiveHandler<T, R, A = never> = (
 ) => Promise<R | AsyncIterableIterator<R>>;
 
 interface Config {
-  httpServer: http.Server;
+  httpServer: http.Server | https.Server;
   path?: string;
 }
 

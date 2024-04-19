@@ -83,6 +83,46 @@ describe('MessageConnection', (): void => {
       });
     });
 
+    it('should handle push messages from the server', async () => {
+      const httpServer = http.createServer();
+      await new Promise<void>((resolve): void => {
+        httpServer.listen({ port: 55556 }, resolve);
+      });
+
+      const wsms = new WebSocketMessageServer<string, string>({ httpServer, path: '/simultaneous-path' });
+      wsms.onReceive = async (_, message) => {
+        if (message === 'startPushing') {
+          await wsms.connections[0].send('one');
+          await wsms.connections[0].send('two');
+          await wsms.connections[0].send('three');
+          return 'pushed';
+        }
+        return '';
+      };
+
+      const clientConnection = WebSocketMessageClient.create<string, string>('ws://localhost:55556/simultaneous-path');
+      const receivedMessages1: string[] = [];
+      const receivedMessages2: string[] = [];
+      clientConnection.addReceiveHandler(async message => {
+        receivedMessages1.push(message);
+      });
+      clientConnection.addReceiveHandler(async message => {
+        receivedMessages2.push(message);
+      });
+      await clientConnection.request('startPushing');
+
+      expect(receivedMessages1).toEqual(['one', 'two', 'three']);
+      expect(receivedMessages2).toEqual(['one', 'two', 'three']);
+
+      await clientConnection.close();
+
+      await wsms.close();
+
+      await new Promise((resolve): void => {
+        httpServer.close(resolve);
+      });
+    });
+
     it('should close the socket if the wrong path is specified', async (): Promise<void> => {
       const httpServer = http.createServer();
       await new Promise<void>((resolve): void => {

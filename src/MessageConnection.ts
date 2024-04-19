@@ -71,6 +71,8 @@ export interface ConversationSummary<T, R> {
 
 const DEFAULT_RESPONSE_TIMEOUT = 30000;
 
+export type ReceiveHandler<T, R> = (message: T) => Promise<R | AsyncIterableIterator<R> | void>;
+
 interface MessageConnectionOptions<T, R> {
   signSalt?: string;
   marshalPayload?: (payload: T | R) => T | R;
@@ -86,8 +88,7 @@ export class MessageConnection<T, R, A = never> {
   private marshalPayload: (payload: T | R) => T | R;
   private unmarshalPayload: (payload: T | R) => T | R;
   private attributes = new Map<keyof A, A[keyof A]>();
-
-  public onReceive?: (message: T) => Promise<R | AsyncIterableIterator<R> | void>;
+  private receiveHandler?: ReceiveHandler<T, R>;
   public onConversation?: (c: ConversationSummary<T, R>) => void;
 
   public constructor(
@@ -106,8 +107,8 @@ export class MessageConnection<T, R, A = never> {
 
       const unmarshaledMessage = this.unmarshalMessage(message);
 
-      if (message.t === MessageType.Request) {
-        this.handleRequest(unmarshaledMessage as RequestMessage<T>);
+      if (unmarshaledMessage.t === MessageType.Request) {
+        this.handleRequest(unmarshaledMessage);
         return;
       }
 
@@ -135,6 +136,13 @@ export class MessageConnection<T, R, A = never> {
         }
       }
     });
+  }
+
+  public get onReceive(): ReceiveHandler<T, R> | undefined {
+    return this.receiveHandler;
+  }
+  public set onReceive(receiveHandler: ReceiveHandler<T, R> | undefined) {
+    this.receiveHandler = receiveHandler;
   }
 
   public get id(): string {
@@ -316,12 +324,12 @@ export class MessageConnection<T, R, A = never> {
       conversation.responses.push({ message: signedMessage, time: hrtime(start) });
     };
 
-    if (!this.onReceive) {
+    if (!this.receiveHandler) {
       throw new Error('No receive handler set.');
     }
 
     try {
-      const result = await this.onReceive(requestPayload);
+      const result = await this.receiveHandler(requestPayload);
       if (typeof result === 'object' && (result as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
         for await (const responsePayload of result as AsyncIterableIterator<R>) {
           respond({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });

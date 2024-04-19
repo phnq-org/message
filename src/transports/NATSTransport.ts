@@ -92,7 +92,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   }
 
   private config: NATSTransportConnectionOptions;
-  private nc: NatsConnection;
+  public readonly nc: NatsConnection;
   private options: NATSTransportOptions<T, R>;
   private maxPayload: number;
   private receiveHandler?: (message: RequestMessage<T> | ResponseMessage<R>) => void;

@@ -19,8 +19,8 @@ describe('NATSTransport', (): void => {
   let monitorTransport: NATSTransport<string, string>;
 
   beforeAll(async (): Promise<void> => {
-    const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4223}`] };
-    const monitorUrl = `http://localhost:${isCCI ? 8222 : 8223}`;
+    const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4225}`] };
+    const monitorUrl = `http://localhost:${isCCI ? 8222 : 8225}`;
     const signSalt = String(Date.now());
 
     clientConnection = new MessageConnection<string | undefined, string | undefined>(

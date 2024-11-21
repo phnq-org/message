@@ -43,6 +43,10 @@ export class WebSocketMessageServer<T = unknown, R = T, A = never> {
   }
 
   public async close(): Promise<void> {
+    for (const connection of this.connections) {
+      await connection.transport.close();
+    }
+
     await new Promise((resolve, reject): void => {
       try {
         this.wss.close(resolve);

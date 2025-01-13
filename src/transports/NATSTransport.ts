@@ -1,5 +1,4 @@
 import { createLogger } from '@phnq/log';
-import { get } from 'http';
 import { connect, ConnectionOptions, JSONCodec, NatsConnection, SubscriptionOptions } from 'nats';
 import hash from 'object-hash';
 import { v4 as uuid } from 'uuid';
@@ -129,18 +128,12 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
       throw new Error('monitorUrl not set');
     }
 
-    return new Promise<NATSConnection[]>(resolve => {
-      get([this.config.monitorUrl, 'connz'].join('/'), res => {
-        const chunks: Uint8Array[] = [];
-        res.on('data', (chunk: Uint8Array) => {
-          chunks.push(chunk);
-        });
-        res.on('end', () => {
-          const { connections } = JSON.parse(Buffer.concat(chunks).toString()) as { connections: NATSConnection[] };
-          resolve(connections);
-        });
-      });
-    });
+    const connz = (await (
+      await fetch([this.config.monitorUrl, 'connz'].join('/'), { headers: { Connection: 'close' } })
+    ).json()) as {
+      connections: NATSConnection[];
+    };
+    return connz.connections;
   }
 
   public async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {

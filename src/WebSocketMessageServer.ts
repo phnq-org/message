@@ -11,6 +11,7 @@ type ConnectHandler<T, R, A = never> = (
   conn: MessageConnection<T, R, A>,
   upgradeRequest: http.IncomingMessage,
 ) => Promise<void>;
+type DisconnectHandler<T, R, A = never> = (conn: MessageConnection<T, R, A>) => Promise<void>;
 type ReceiveHandler<T, R, A = never> = (
   conn: MessageConnection<T, R, A>,
   message: T,
@@ -24,6 +25,7 @@ interface Config {
 export class WebSocketMessageServer<T = unknown, R = T, A = never> {
   private wss: WebSocket.Server;
   public onConnect: ConnectHandler<T, R, A> = async () => undefined;
+  public onDisconnect: DisconnectHandler<T, R, A> = async () => undefined;
   public onReceive: ReceiveHandler<T, R, A> = async () => {
     throw new Error('WebSocketMessageServer.onReceive not set');
   };
@@ -69,11 +71,12 @@ export class WebSocketMessageServer<T = unknown, R = T, A = never> {
 
       connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> => this.onReceive(connection, message);
 
-      await this.onConnect(connection, req);
-
-      socket.addListener('close', () => {
+      socket.addListener('close', async () => {
         this.connectionsById.delete(connection.id);
+        await this.onDisconnect(connection);
       });
+
+      await this.onConnect(connection, req);
     });
   }
 }

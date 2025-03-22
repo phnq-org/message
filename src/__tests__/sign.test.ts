@@ -100,6 +100,31 @@ describe('sign/verify', (): void => {
     }).not.toThrowError();
   });
 
+  it('should successfully sign and verify a message with serialized/deserialized message, dates and date strings', (): void => {
+    const message: RequestMessage = {
+      t: MessageType.Request,
+      c: 1,
+      s: 'source',
+      p: {
+        date1: new Date(),
+        date2: '2025-03-22T11:53:26.424',
+        date3: '2025-03-22T11:53:26.424Z',
+        foo: 'bar',
+        nums: [1, 2, 3, 4, 5],
+        nope: undefined,
+        stuff: null,
+      },
+    };
+
+    const signedMessage = signMessage(message, SALT);
+
+    expect(signedMessage.z).toBeTruthy();
+
+    expect(() => {
+      verifyMessage(deserialize(serialize(signedMessage)), SALT) as typeof signedMessage;
+    }).not.toThrowError();
+  });
+
   it('should successfully sign and verify a message with a large payload', (): void => {
     const num = 20000;
 

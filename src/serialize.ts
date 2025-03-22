@@ -1,13 +1,42 @@
+/**
+ * Although it may be tempting to no-op this and let `JSON.stringify` serialize
+ * dates to ISO 8601 strings, this is not a good idea. The reason is that a
+ * string that happens to be an ISO 8601 date string when serialized will be
+ * deserialized as a Date object. This could have implications during message
+ * signing and verification.
+ *
+ * {
+ *  str: "2025-03-22T11:53:26.424"
+ * }
+ *
+ * will have the `str` deserialized as a Date object. But when verifying the message,
+ * which involves using `JSON.stringify`, it will be serialized as:
+ * {
+ *  str: "2025-03-22T11:53:26.424Z"
+ * }
+ *
+ * The additional `Z` at the end of the string will cause the hash to be different
+ * and the verification to fail.
+ */
 export const annotate = (val: unknown): unknown => {
-  /**
-   * This is just a pass through no-op function.
-   * Only dates are needed to be handled and JSON.stringify serializes dates to
-   * the ISO 8601 by default.
-   */
+  if (val instanceof Array) {
+    const arr = val;
+    return arr.map(annotate);
+  }
+
+  if (val instanceof Date) {
+    const date = val;
+    return `${date.toISOString()}@@@D`;
+  }
+
+  if (val && typeof val === 'object') {
+    return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, annotate(v)]));
+  }
+
   return val;
 };
 
-const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)$/gm;
+const DATE_RE = /^(.+)@@@D$/;
 
 export const deannotate = (val: unknown): unknown => {
   if (val instanceof Array) {
@@ -15,17 +44,13 @@ export const deannotate = (val: unknown): unknown => {
     return arr.map(deannotate);
   }
 
-  if (typeof val === 'string' && val.match(DATE_RE)) {
-    return new Date(val);
+  const dateM = typeof val === 'string' ? DATE_RE.exec(val) : undefined;
+  if (dateM) {
+    return new Date(dateM[1]);
   }
 
   if (val && typeof val === 'object') {
-    const srcObj = val as Record<string, unknown>;
-    const destObj: Record<string, unknown> = {};
-    Object.keys(srcObj).forEach(k => {
-      destObj[k] = deannotate(srcObj[k]);
-    });
-    return destObj;
+    return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, deannotate(v)]));
   }
 
   return val;

@@ -101,11 +101,22 @@ export class MessageConnection<T, R, A = never> {
     this.unmarshalPayload = unmarshalPayload || (p => p);
 
     transport.onReceive(message => {
+      let errorMessage: ErrorMessage | undefined;
+
       if (this.signSalt) {
-        verifyMessage<T, R>(message, this.signSalt);
+        try {
+          verifyMessage<T, R>(message, this.signSalt);
+        } catch (err) {
+          errorMessage = {
+            c: message.c,
+            s: message.s,
+            t: MessageType.Error,
+            p: { message: (err as Error).message ?? 'Failed to verify message', requestPayload: message.p },
+          };
+        }
       }
 
-      const unmarshaledMessage = this.unmarshalMessage(message);
+      const unmarshaledMessage = this.unmarshalMessage(errorMessage || message);
 
       if (unmarshaledMessage.t === MessageType.Request) {
         this.handleRequest(unmarshaledMessage);

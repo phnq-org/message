@@ -1,4 +1,4 @@
-import { MessageTransport, RequestMessage, ResponseMessage } from '../MessageTransport';
+import { MessageTransport, MessageType, RequestMessage, ResponseMessage } from '../MessageTransport';
 import { annotate, deannotate } from '../serialize';
 
 type SubjectResolver<T, R> = (message: RequestMessage<T> | ResponseMessage<R>) => string;
@@ -12,6 +12,7 @@ export class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
   private options: Options<T, R>;
   private receiveHandler?: (message: RequestMessage<T> | ResponseMessage<R>) => void;
   private subIds: number[] = [];
+  private subjectById = new Map<number, string>();
 
   constructor(options: Options<T, R>) {
     this.options = options;
@@ -25,10 +26,24 @@ export class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
   }
 
   async send(message: RequestMessage<T> | ResponseMessage<R>): Promise<void> {
-    const subject =
-      typeof this.options.publishSubject === 'function'
-        ? this.options.publishSubject(message)
-        : this.options.publishSubject;
+    const publishSubject = this.options.publishSubject;
+
+    let subject: string | undefined;
+    if (message.t === MessageType.End) {
+      subject = this.subjectById.get(message.c);
+    } else {
+      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
+    }
+
+    if (subject === undefined) {
+      throw new Error('Could not get subject');
+    }
+
+    if (message.t === MessageType.End) {
+      this.subjectById.delete(message.c);
+    } else {
+      this.subjectById.set(message.c, subject);
+    }
 
     const subCount = PubSub.instance.publish(subject, message);
     if (subCount === 0) {

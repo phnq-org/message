@@ -23,9 +23,7 @@
     "pretest": "if [ \"$CCI\" != \"1\" ]; then podman run -d --name nats_phnq_message_test -p 4225:4222 -p8225:8222 nats; fi",
     "posttest": "if [ \"$CCI\" != \"1\" ]; then podman stop nats_phnq_message_test; podman rm nats_phnq_message_test; fi",
     "prelint": "tsc -b",
-    "lint": "biome check src",
-    "release:patch": "npm run clean; npm version patch; git push; npm run dist; cd dist; npm publish",
-    "release:minor": "npm run clean; npm version minor; git push; npm run dist; cd dist; npm publish"
+    "lint": "biome check src"
   },
   "engines": {
     "node": ">=20"

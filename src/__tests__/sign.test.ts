@@ -1,16 +1,17 @@
-import { MessageType, RequestMessage } from '../MessageTransport';
-import { deserialize, serialize } from '../serialize';
-import { signMessage, verifyMessage } from '../sign';
+import { describe, expect, it } from "bun:test";
+import { MessageType, type RequestMessage } from "../MessageTransport";
+import { deserialize, serialize } from "../serialize";
+import { signMessage, verifyMessage } from "../sign";
 
-const SALT = 'abcd1234';
+const SALT = "abcd1234";
 
-describe('sign/verify', (): void => {
-  it('should successfully sign and verify a simple message', (): void => {
+describe("sign/verify", (): void => {
+  it("should successfully sign and verify a simple message", (): void => {
     const message: RequestMessage<string> = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
-      p: 'hello',
+      s: "source",
+      p: "hello",
     };
 
     const signedMessage = signMessage(message, SALT);
@@ -22,29 +23,29 @@ describe('sign/verify', (): void => {
     }).not.toThrowError();
   });
 
-  it('should throw during verification of a modified signed message', (): void => {
+  it("should throw during verification of a modified signed message", (): void => {
     const message: RequestMessage<string> = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
-      p: 'hello',
+      s: "source",
+      p: "hello",
     };
 
     const signedMessage = signMessage(message, SALT);
 
     expect(() => {
-      const doctoredMessage = { ...signedMessage, s: 'wrong source' };
+      const doctoredMessage = { ...signedMessage, s: "wrong source" };
 
       verifyMessage(doctoredMessage, SALT);
     }).toThrowError();
   });
 
-  it('should throw during verification of a message with no signature', (): void => {
+  it("should throw during verification of a message with no signature", (): void => {
     const message: RequestMessage<string> = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
-      p: 'hello',
+      s: "source",
+      p: "hello",
     };
 
     const signedMessage = signMessage(message, SALT);
@@ -54,14 +55,14 @@ describe('sign/verify', (): void => {
     }).toThrowError();
   });
 
-  it('should successfully sign and verify a message with object payload', (): void => {
+  it("should successfully sign and verify a message with object payload", (): void => {
     const message: RequestMessage = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
+      s: "source",
       p: {
         date: new Date(),
-        foo: 'bar',
+        foo: "bar",
         nums: [1, 2, 3, 4, 5],
         nope: undefined,
         stuff: null,
@@ -77,14 +78,14 @@ describe('sign/verify', (): void => {
     }).not.toThrowError();
   });
 
-  it('should successfully sign and verify a message with serialized/deserialized message', (): void => {
+  it("should successfully sign and verify a message with serialized/deserialized message", (): void => {
     const message: RequestMessage = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
+      s: "source",
       p: {
         date: new Date(),
-        foo: 'bar',
+        foo: "bar",
         nums: [1, 2, 3, 4, 5],
         nope: undefined,
         stuff: null,
@@ -100,16 +101,16 @@ describe('sign/verify', (): void => {
     }).not.toThrowError();
   });
 
-  it('should successfully sign and verify a message with serialized/deserialized message, dates and date strings', (): void => {
+  it("should successfully sign and verify a message with serialized/deserialized message, dates and date strings", (): void => {
     const message: RequestMessage = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
+      s: "source",
       p: {
         date1: new Date(),
-        date2: '2025-03-22T11:53:26.424',
-        date3: '2025-03-22T11:53:26.424Z',
-        foo: 'bar',
+        date2: "2025-03-22T11:53:26.424",
+        date3: "2025-03-22T11:53:26.424Z",
+        foo: "bar",
         nums: [1, 2, 3, 4, 5],
         nope: undefined,
         stuff: null,
@@ -125,7 +126,7 @@ describe('sign/verify', (): void => {
     }).not.toThrowError();
   });
 
-  it('should successfully sign and verify a message with a large payload', (): void => {
+  it("should successfully sign and verify a message with a large payload", (): void => {
     const num = 20000;
 
     const streams: {
@@ -156,7 +157,7 @@ describe('sign/verify', (): void => {
     const largeMessage: RequestMessage = {
       t: MessageType.Request,
       c: 1,
-      s: 'source',
+      s: "source",
       p: {
         streams,
       },

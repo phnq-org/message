@@ -1,5 +1,10 @@
-import { MessageTransport, MessageType, RequestMessage, ResponseMessage } from '../MessageTransport';
-import { annotate, deannotate } from '../serialize';
+import {
+  type MessageTransport,
+  MessageType,
+  type RequestMessage,
+  type ResponseMessage,
+} from "../MessageTransport";
+import { annotate, deannotate } from "../serialize";
 
 type SubjectResolver<T, R> = (message: RequestMessage<T> | ResponseMessage<R>) => string;
 
@@ -8,7 +13,7 @@ interface Options<T, R> {
   publishSubject: string | SubjectResolver<T, R>;
 }
 
-export class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
+class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
   private options: Options<T, R>;
   private receiveHandler?: (message: RequestMessage<T> | ResponseMessage<R>) => void;
   private subIds: number[] = [];
@@ -16,7 +21,7 @@ export class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
 
   constructor(options: Options<T, R>) {
     this.options = options;
-    this.subIds = options.subscriptions.map(sub =>
+    this.subIds = options.subscriptions.map((sub) =>
       PubSub.instance.subscribe(sub, (message: RequestMessage<T> | ResponseMessage<R>) => {
         if (this.receiveHandler) {
           this.receiveHandler(message);
@@ -32,11 +37,11 @@ export class LocalPubSubTransport<T, R> implements MessageTransport<T, R> {
     if (message.t === MessageType.End) {
       subject = this.subjectById.get(message.c);
     } else {
-      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
+      subject = typeof publishSubject === "string" ? publishSubject : publishSubject(message);
     }
 
     if (subject === undefined) {
-      throw new Error('Could not get subject');
+      throw new Error("Could not get subject");
     }
 
     if (message.t === MessageType.End) {
@@ -74,9 +79,13 @@ class PubSub {
       yield i;
     }
   })();
-  private subscriptions: Record<string, { subId: number; handler: (message: unknown) => void }[]> = {};
+  private subscriptions: Record<string, { subId: number; handler: (message: unknown) => void }[]> =
+    {};
 
-  public publish(subject: string, message: RequestMessage<unknown> | ResponseMessage<unknown>): number {
+  public publish(
+    subject: string,
+    message: RequestMessage<unknown> | ResponseMessage<unknown>,
+  ): number {
     const subs = this.subscriptions[subject] ?? [];
     for (const sub of subs) {
       /**
@@ -92,7 +101,10 @@ class PubSub {
     return subs.length;
   }
 
-  public subscribe<T, R>(subject: string, callback: (message: RequestMessage<T> | ResponseMessage<R>) => void): number {
+  public subscribe<T, R>(
+    subject: string,
+    callback: (message: RequestMessage<T> | ResponseMessage<R>) => void,
+  ): number {
     const subs = this.subscriptions[subject] ?? [];
     const subId = this.subIdIter.next().value;
     subs.push({ subId, handler: callback as (message: unknown) => void });
@@ -102,10 +114,16 @@ class PubSub {
 
   public unsubscribe(subId: number): void {
     for (const subject in this.subscriptions) {
-      this.subscriptions[subject] = this.subscriptions[subject].filter(sub => sub.subId !== subId);
-      if (this.subscriptions[subject].length === 0) {
-        delete this.subscriptions[subject];
+      if (this.subscriptions[subject]) {
+        this.subscriptions[subject] = this.subscriptions[subject].filter(
+          (sub) => sub.subId !== subId,
+        );
+        if (this.subscriptions[subject].length === 0) {
+          delete this.subscriptions[subject];
+        }
       }
     }
   }
 }
+
+export default LocalPubSubTransport;

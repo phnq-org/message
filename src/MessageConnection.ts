@@ -1,18 +1,18 @@
-import { createLogger } from '@phnq/log';
-import { AsyncQueue } from '@phnq/streams';
-import hrtime from 'browser-process-hrtime';
-import { v4 as uuid } from 'uuid';
+import { createLogger } from "@phnq/log";
+import { AsyncQueue } from "@phnq/streams";
+import hrtime from "browser-process-hrtime";
+import { v4 as uuid } from "uuid";
 
-import { Anomaly } from './errors';
+import { Anomaly } from "./errors";
 import {
-  AnomalyMessage,
-  ErrorMessage,
-  MessageTransport,
+  type AnomalyMessage,
+  type ErrorMessage,
+  type MessageTransport,
   MessageType,
-  RequestMessage,
-  ResponseMessage,
-} from './MessageTransport';
-import { signMessage, verifyMessage } from './sign';
+  type RequestMessage,
+  type ResponseMessage,
+} from "./MessageTransport";
+import { signMessage, verifyMessage } from "./sign";
 
 /**
  * MessageConnection
@@ -38,7 +38,7 @@ import { signMessage, verifyMessage } from './sign';
  * message and returning either an async value or an async iterator.
  */
 
-const log = createLogger('MessageConnection');
+const log = createLogger("MessageConnection");
 
 const idIterator = (function* (): IterableIterator<number> {
   let i = 0;
@@ -59,8 +59,8 @@ const possiblyThrow = (message: ResponseMessage<unknown>): void => {
 };
 
 export enum ConversationPerspective {
-  Requester = 'requester',
-  Responder = 'responder',
+  Requester = "requester",
+  Responder = "responder",
 }
 
 export interface ConversationSummary<T, R> {
@@ -71,7 +71,9 @@ export interface ConversationSummary<T, R> {
 
 const DEFAULT_RESPONSE_TIMEOUT = 30000;
 
-export type ReceiveHandler<T, R> = (message: T) => Promise<R | AsyncIterableIterator<R> | void>;
+export type ReceiveHandler<T, R> = (
+  message: T,
+) => Promise<R | AsyncIterableIterator<R> | undefined>;
 
 interface MessageConnectionOptions<T, R> {
   signSalt?: string;
@@ -79,7 +81,7 @@ interface MessageConnectionOptions<T, R> {
   unmarshalPayload?: (payload: T | R) => T | R;
 }
 
-export class MessageConnection<T, R, A = never> {
+class MessageConnection<T, R, A = never> {
   public responseTimeout = DEFAULT_RESPONSE_TIMEOUT;
   private connId = uuid();
   public readonly transport: MessageTransport<T, R>;
@@ -97,10 +99,10 @@ export class MessageConnection<T, R, A = never> {
   ) {
     this.transport = transport;
     this.signSalt = signSalt;
-    this.marshalPayload = marshalPayload || (p => p);
-    this.unmarshalPayload = unmarshalPayload || (p => p);
+    this.marshalPayload = marshalPayload || ((p) => p);
+    this.unmarshalPayload = unmarshalPayload || ((p) => p);
 
-    transport.onReceive(message => {
+    transport.onReceive((message) => {
       let errorMessage: ErrorMessage | undefined;
 
       if (this.signSalt) {
@@ -111,7 +113,10 @@ export class MessageConnection<T, R, A = never> {
             c: message.c,
             s: message.s,
             t: MessageType.Error,
-            p: { message: (err as Error).message ?? 'Failed to verify message', requestPayload: message.p },
+            p: {
+              message: (err as Error).message ?? "Failed to verify message",
+              requestPayload: message.p,
+            },
           };
         }
       }
@@ -185,7 +190,7 @@ export class MessageConnection<T, R, A = never> {
   public async requestOne(data: T, expectResponse = true): Promise<R> {
     const resp = await this.request(data, expectResponse);
 
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+    if (typeof resp === "object" && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
       const resps: R[] = [];
 
       for await (const r of resp as AsyncIterableIterator<R>) {
@@ -193,7 +198,13 @@ export class MessageConnection<T, R, A = never> {
       }
 
       if (resps.length > 1) {
-        log.warn('requestOne: multiple responses were returned -- all but the first were discarded');
+        log.warn(
+          "requestOne: multiple responses were returned -- all but the first were discarded",
+        );
+      }
+
+      if (!resps[0]) {
+        throw new Error("requestOne: no responses were returned");
       }
 
       return resps[0];
@@ -204,7 +215,7 @@ export class MessageConnection<T, R, A = never> {
 
   public async requestMulti(data: T): Promise<AsyncIterableIterator<R>> {
     const resp = await this.request(data);
-    if (typeof resp === 'object' && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+    if (typeof resp === "object" && (resp as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
       return resp as AsyncIterableIterator<R>;
     } else {
       return (async function* (): AsyncIterableIterator<R> {
@@ -213,11 +224,16 @@ export class MessageConnection<T, R, A = never> {
     }
   }
 
-  public async request(data: T, expectResponse = true): Promise<AsyncIterableIterator<R> | R | undefined> {
+  public async request(
+    data: T,
+    expectResponse = true,
+  ): Promise<AsyncIterableIterator<R> | R | undefined> {
     return this.doRequest(data, expectResponse);
   }
 
-  private marshalMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+  private marshalMessage(
+    message: RequestMessage<T> | ResponseMessage<R>,
+  ): RequestMessage<T> | ResponseMessage<R> {
     switch (message.t) {
       case MessageType.Request:
         return { ...message, p: this.marshalPayload(message.p as T) as T };
@@ -229,7 +245,9 @@ export class MessageConnection<T, R, A = never> {
     return message;
   }
 
-  private unmarshalMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+  private unmarshalMessage(
+    message: RequestMessage<T> | ResponseMessage<R>,
+  ): RequestMessage<T> | ResponseMessage<R> {
     switch (message.t) {
       case MessageType.Request:
         return { ...message, p: this.unmarshalPayload(message.p as T) as T };
@@ -241,14 +259,19 @@ export class MessageConnection<T, R, A = never> {
     return message;
   }
 
-  private signMessage(message: RequestMessage<T> | ResponseMessage<R>): RequestMessage<T> | ResponseMessage<R> {
+  private signMessage(
+    message: RequestMessage<T> | ResponseMessage<R>,
+  ): RequestMessage<T> | ResponseMessage<R> {
     if (this.signSalt) {
       return signMessage<T, R>(message, this.signSalt);
     }
     return message;
   }
 
-  private async doRequest(payload: T, expectResponse: boolean): Promise<AsyncIterableIterator<R> | R | undefined> {
+  private async doRequest(
+    payload: T,
+    expectResponse: boolean,
+  ): Promise<AsyncIterableIterator<R> | R | undefined> {
     const reqId = idIterator.next().value;
     const responseQueues = this.responseQueues;
     const source = this.id;
@@ -296,7 +319,7 @@ export class MessageConnection<T, R, A = never> {
                 }
               } else {
                 log.warn(
-                  'Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s',
+                  "Received responses from multiple sources for request -- keeping the first, ignoring the rest: %s",
                   JSON.stringify(payload),
                 );
               }
@@ -336,16 +359,19 @@ export class MessageConnection<T, R, A = never> {
     };
 
     if (!this.receiveHandler) {
-      throw new Error('No receive handler set.');
+      throw new Error("No receive handler set.");
     }
 
     try {
       const result = await this.receiveHandler(requestPayload);
-      if (typeof result === 'object' && (result as AsyncIterableIterator<R>)[Symbol.asyncIterator]) {
+      if (
+        typeof result === "object" &&
+        (result as AsyncIterableIterator<R>)[Symbol.asyncIterator]
+      ) {
         for await (const responsePayload of result as AsyncIterableIterator<R>) {
           respond({ p: responsePayload, c: message.c, s: source, t: MessageType.Multi });
         }
-        respond({ c: message.c, s: source, t: MessageType.End, p: 'END' });
+        respond({ c: message.c, s: source, t: MessageType.End, p: "END" });
       } else if (result) {
         const responsePayload = result;
         respond({ p: responsePayload as R, c: message.c, s: source, t: MessageType.Response });
@@ -378,3 +404,5 @@ export class MessageConnection<T, R, A = never> {
     }
   }
 }
+
+export default MessageConnection;

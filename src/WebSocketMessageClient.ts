@@ -1,9 +1,9 @@
-import { MessageConnection, ReceiveHandler } from './MessageConnection';
-import { ClientWebSocketTransport } from './transports/WebSocketTransport';
+import MessageConnection, { type ReceiveHandler } from "./MessageConnection";
+import { ClientWebSocketTransport } from "./transports/WebSocketTransport";
 
 const clients = new Map<string, WebSocketMessageClient<unknown, unknown>>();
 
-export class WebSocketMessageClient<T, R> extends MessageConnection<T, R> {
+class WebSocketMessageClient<T, R> extends MessageConnection<T, R> {
   public static create<T, R>(url: string): WebSocketMessageClient<T, R> {
     let client = clients.get(url);
     if (!client) {
@@ -19,17 +19,24 @@ export class WebSocketMessageClient<T, R> extends MessageConnection<T, R> {
   private constructor(url: string) {
     super(new ClientWebSocketTransport<T, R>(url));
 
-    (this.transport as ClientWebSocketTransport<T, R>).onClose = () => [...this.onCloseHandlers].forEach(fn => fn());
+    (this.transport as ClientWebSocketTransport<T, R>).onClose = () => {
+      for (const onClose of this.onCloseHandlers) {
+        onClose();
+      }
+    };
 
-    super.onReceive = async message => {
+    super.onReceive = async (message) => {
       for (const receiveHandler of this.receiveHandlers) {
         await receiveHandler(message);
       }
+      return undefined;
     };
   }
 
-  public set onReceive(_handler: ReceiveHandler<T, R>) {
-    throw new Error('onReceive is not supported on WebSocketMessageClient. Use addReceiveHandler instead.');
+  public override set onReceive(_handler: ReceiveHandler<T, R>) {
+    throw new Error(
+      "onReceive is not supported on WebSocketMessageClient. Use addReceiveHandler instead.",
+    );
   }
 
   public addReceiveHandler(receiveHandler: ReceiveHandler<T, R>): void {
@@ -48,3 +55,5 @@ export class WebSocketMessageClient<T, R> extends MessageConnection<T, R> {
     this.onCloseHandlers.add(onClose);
   }
 }
+
+export default WebSocketMessageClient;

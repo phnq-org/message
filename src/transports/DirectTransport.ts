@@ -1,6 +1,6 @@
-import { MessageTransport, RequestMessage, ResponseMessage } from '../MessageTransport';
+import type { MessageTransport, RequestMessage, ResponseMessage } from "../MessageTransport";
 
-export class DirectTransport<T, R> implements MessageTransport<T, R> {
+class DirectTransport<T, R> implements MessageTransport<T, R> {
   private connectedTransport: DirectTransport<T, R>;
 
   public constructor(transport?: DirectTransport<T, R>) {
@@ -31,3 +31,5 @@ export class DirectTransport<T, R> implements MessageTransport<T, R> {
     // no-op
   }
 }
+
+export default DirectTransport;

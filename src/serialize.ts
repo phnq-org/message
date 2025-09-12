@@ -19,7 +19,7 @@
  * and the verification to fail.
  */
 export const annotate = (val: unknown): unknown => {
-  if (val instanceof Array) {
+  if (Array.isArray(val)) {
     const arr = val;
     return arr.map(annotate);
   }
@@ -29,7 +29,7 @@ export const annotate = (val: unknown): unknown => {
     return `${date.toISOString()}@@@D`;
   }
 
-  if (val && typeof val === 'object') {
+  if (val && typeof val === "object") {
     return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, annotate(v)]));
   }
 
@@ -39,17 +39,17 @@ export const annotate = (val: unknown): unknown => {
 const DATE_RE = /^(.+)@@@D$/;
 
 export const deannotate = (val: unknown): unknown => {
-  if (val instanceof Array) {
+  if (Array.isArray(val)) {
     const arr = val;
     return arr.map(deannotate);
   }
 
-  const dateM = typeof val === 'string' ? DATE_RE.exec(val) : undefined;
-  if (dateM) {
+  const dateM = typeof val === "string" ? DATE_RE.exec(val) : undefined;
+  if (dateM?.[1]) {
     return new Date(dateM[1]);
   }
 
-  if (val && typeof val === 'object') {
+  if (val && typeof val === "object") {
     return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, deannotate(v)]));
   }
 

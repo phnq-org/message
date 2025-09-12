@@ -1,9 +1,8 @@
-import http from 'http';
-import https from 'https';
-import WebSocket from 'isomorphic-ws';
-
-import { MessageConnection } from './MessageConnection';
-import { ServerWebSocketTransport } from './transports/WebSocketTransport';
+import type http from "node:http";
+import type https from "node:https";
+import WebSocket from "isomorphic-ws";
+import MessageConnection from "./MessageConnection";
+import ServerWebSocketTransport from "./transports/WebSocketTransport";
 
 export type ConnectionId = string;
 
@@ -22,16 +21,16 @@ interface Config {
   path?: string;
 }
 
-export class WebSocketMessageServer<T = unknown, R = T, A = never> {
+class WebSocketMessageServer<T = unknown, R = T, A = never> {
   private wss: WebSocket.Server;
   public onConnect: ConnectHandler<T, R, A> = async () => undefined;
   public onDisconnect: DisconnectHandler<T, R, A> = async () => undefined;
   public onReceive: ReceiveHandler<T, R, A> = async () => {
-    throw new Error('WebSocketMessageServer.onReceive not set');
+    throw new Error("WebSocketMessageServer.onReceive not set");
   };
   private connectionsById = new Map<ConnectionId, MessageConnection<T, R, A>>();
 
-  public constructor({ httpServer, path = '/' }: Config) {
+  public constructor({ httpServer, path = "/" }: Config) {
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path);
   }
@@ -59,24 +58,32 @@ export class WebSocketMessageServer<T = unknown, R = T, A = never> {
   }
 
   private start(path: string): void {
-    this.wss.on('connection', async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
-      if (req.url !== path) {
-        socket.close(1008, `unsupported path: ${req.url}`);
-        return;
-      }
+    this.wss.on(
+      "connection",
+      async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
+        if (req.url !== path) {
+          socket.close(1008, `unsupported path: ${req.url}`);
+          return;
+        }
 
-      const connection = new MessageConnection<T, R, A>(new ServerWebSocketTransport<T, R>(socket));
+        const connection = new MessageConnection<T, R, A>(
+          new ServerWebSocketTransport<T, R>(socket),
+        );
 
-      this.connectionsById.set(connection.id, connection);
+        this.connectionsById.set(connection.id, connection);
 
-      connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> => this.onReceive(connection, message);
+        connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> =>
+          this.onReceive(connection, message);
 
-      socket.addListener('close', async () => {
-        this.connectionsById.delete(connection.id);
-        await this.onDisconnect(connection);
-      });
+        socket.addListener("close", async () => {
+          this.connectionsById.delete(connection.id);
+          await this.onDisconnect(connection);
+        });
 
-      await this.onConnect(connection, req);
-    });
+        await this.onConnect(connection, req);
+      },
+    );
   }
 }
+
+export default WebSocketMessageServer;

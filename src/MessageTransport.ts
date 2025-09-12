@@ -1,10 +1,10 @@
 export enum MessageType {
-  Request = 'request',
-  Response = 'response',
-  Multi = 'multi',
-  End = 'end',
-  Error = 'error',
-  Anomaly = 'anomaly',
+  Request = "request",
+  Response = "response",
+  Multi = "multi",
+  End = "end",
+  Error = "error",
+  Anomaly = "anomaly",
 }
 
 interface Message<T> {
@@ -27,7 +27,7 @@ export interface MultiResponseMessage<R> extends Message<R> {
   t: MessageType.Multi;
 }
 
-export interface EndMessage extends Message<'END'> {
+export interface EndMessage extends Message<"END"> {
   t: MessageType.End;
 }
 

@@ -1,16 +1,27 @@
-import { createLogger } from '@phnq/log';
-import { connect, ConnectionOptions, JSONCodec, NatsConnection, SubscriptionOptions } from 'nats';
-import hash from 'object-hash';
-import { v4 as uuid } from 'uuid';
+import { createLogger } from "@phnq/log";
+import {
+  type ConnectionOptions,
+  connect,
+  JSONCodec,
+  type NatsConnection,
+  type SubscriptionOptions,
+} from "nats";
+import hash from "object-hash";
+import { v4 as uuid } from "uuid";
 
-import { MessageTransport, MessageType, RequestMessage, ResponseMessage } from '../MessageTransport';
-import { annotate, deannotate } from '../serialize';
+import {
+  type MessageTransport,
+  MessageType,
+  type RequestMessage,
+  type ResponseMessage,
+} from "../MessageTransport";
+import { annotate, deannotate } from "../serialize";
 
-const log = createLogger('NATSTransport');
+const log = createLogger("NATSTransport");
 
-const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === '1';
+const logTraffic = process.env.PHNQ_MESSAGE_LOG_NATS === "1";
 
-const CHUNK_HEADER_PREFIX = Buffer.from('@phnq/message/chunk', 'utf-8');
+const CHUNK_HEADER_PREFIX = new Uint8Array(Buffer.from("@phnq/message/chunk", "utf-8"));
 
 export interface NATSTransportConnectionOptions extends ConnectionOptions {
   monitorUrl?: string;
@@ -66,8 +77,8 @@ const connectToNats = async (config: NATSTransportConnectionOptions): Promise<Na
       if (maxConnectAttempts === 1) {
         throw err;
       }
-      log.error('NATS connection failed: ', err);
-      log('Retrying in %d ms', connectTimeWait);
+      log.error("NATS connection failed: ", err);
+      log("Retrying in %d ms", connectTimeWait);
       await sleep(connectTimeWait);
     }
 
@@ -76,7 +87,7 @@ const connectToNats = async (config: NATSTransportConnectionOptions): Promise<Na
   throw new Error(`NATS connection failed after ${connectAttempts} attempts`);
 };
 
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class NATSTransport<T, R> implements MessageTransport<T, R> {
   public static async create<T, R>(
@@ -98,13 +109,17 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   private subjectById = new Map<number, string>();
   private chunkedMessages = new Map<string, Uint8Array[]>();
 
-  private constructor(config: NATSTransportConnectionOptions, nc: NatsConnection, options: NATSTransportOptions<T, R>) {
+  private constructor(
+    config: NATSTransportConnectionOptions,
+    nc: NatsConnection,
+    options: NATSTransportOptions<T, R>,
+  ) {
     this.config = config;
     this.nc = nc;
     this.options = options;
     this.maxPayload = this.nc.info?.max_payload || 0;
     if (this.maxPayload === 0) {
-      throw new Error('NATS max_payload not set');
+      throw new Error("NATS max_payload not set");
     }
   }
 
@@ -116,7 +131,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
       if (refCount > 1) {
         clients.set(clientPoolKey, [nc, refCount - 1]);
       } else {
-        log('Closing NATS connection: ', this.config);
+        log("Closing NATS connection: ", this.config);
         this.nc.close();
         clients.delete(clientPoolKey);
       }
@@ -125,11 +140,11 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
 
   public async getConnections(): Promise<NATSConnection[]> {
     if (!this.config.monitorUrl) {
-      throw new Error('monitorUrl not set');
+      throw new Error("monitorUrl not set");
     }
 
     const connz = (await (
-      await fetch([this.config.monitorUrl, 'connz'].join('/'), { headers: { Connection: 'close' } })
+      await fetch([this.config.monitorUrl, "connz"].join("/"), { headers: { Connection: "close" } })
     ).json()) as {
       connections: NATSConnection[];
     };
@@ -143,11 +158,11 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     if (message.t === MessageType.End) {
       subject = this.subjectById.get(message.c);
     } else {
-      subject = typeof publishSubject === 'string' ? publishSubject : publishSubject(message);
+      subject = typeof publishSubject === "string" ? publishSubject : publishSubject(message);
     }
 
     if (subject === undefined) {
-      throw new Error('Could not get subject');
+      throw new Error("Could not get subject");
     }
 
     if (message.t === MessageType.End) {
@@ -157,7 +172,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     }
 
     if (logTraffic) {
-      log('PUBLISH [%s] %O', subject, message);
+      log("PUBLISH [%s] %O", subject, message);
     }
 
     const marshalledMessage = this.marshall(message);
@@ -169,7 +184,9 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     }
   }
 
-  public onReceive(receiveHandler: (message: RequestMessage<T> | ResponseMessage<R>) => void): void {
+  public onReceive(
+    receiveHandler: (message: RequestMessage<T> | ResponseMessage<R>) => void,
+  ): void {
     this.receiveHandler = receiveHandler;
   }
 
@@ -182,9 +199,9 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
   }
 
   private initialize(): void {
-    this.options.subscriptions.forEach(async subscription => {
-      const subject = typeof subscription === 'string' ? subscription : subscription.subject;
-      const options = typeof subscription === 'string' ? undefined : subscription.options;
+    this.options.subscriptions.forEach(async (subscription) => {
+      const subject = typeof subscription === "string" ? subscription : subscription.subject;
+      const options = typeof subscription === "string" ? undefined : subscription.options;
       const sub = this.nc.subscribe(subject, options);
       for await (const msg of sub) {
         if (this.receiveHandler) {
@@ -192,7 +209,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
           if (CHUNK_HEADER_PREFIX.some((b, i) => msgData[i] !== b)) {
             const message = this.unmarshall(msgData);
             if (logTraffic) {
-              log('RECEIVE [%s] %O', subject, message);
+              log("RECEIVE [%s] %O", subject, message);
             }
             this.receiveHandler(message);
           } else {
@@ -216,10 +233,12 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     uuid(undefined, uuidBuf);
 
     for (let i = 0; i < numChunks; i++) {
-      const chunkHeader = Buffer.concat(
-        [CHUNK_HEADER_PREFIX, Buffer.from(uuidBuf), Buffer.from([i, numChunks])],
-        chunkHeaderLen,
-      );
+      const bufs = [
+        CHUNK_HEADER_PREFIX,
+        new Uint8Array(Buffer.from(uuidBuf)),
+        new Uint8Array([i, numChunks]),
+      ];
+      const chunkHeader = new Uint8Array(Buffer.concat(bufs, chunkHeaderLen));
       const chunkBody = marshalledMessage.slice(
         i * chunkBodyLen,
         Math.min((i + 1) * chunkBodyLen, marshalledMessage.length),
@@ -237,17 +256,24 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
     const uuidStr = hash(chunkBuf.slice(prefixLen, prefixLen + 16));
     const [chunkIndex, numChunks] = chunkBuf.slice(prefixLen + 16, prefixLen + 18);
 
+    if (typeof chunkIndex !== "number" || typeof numChunks !== "number") {
+      log.error("Invalid chunk index or total in message chunk: ", chunkBuf);
+      return;
+    }
+
     let chunkedMessage = this.chunkedMessages.get(uuidStr);
     if (!chunkedMessage) {
-      chunkedMessage = new Array<Buffer>(numChunks);
+      chunkedMessage = new Array<Uint8Array>(numChunks);
       this.chunkedMessages.set(uuidStr, chunkedMessage);
     }
 
     chunkedMessage[chunkIndex] = chunkBuf.slice(prefixLen + 18);
 
     if (chunkedMessage.length === chunkedMessage.filter(Boolean).length) {
-      this.receiveHandler(this.unmarshall(Buffer.concat(chunkedMessage)));
+      this.receiveHandler(this.unmarshall(new Uint8Array(Buffer.concat(chunkedMessage))));
       this.chunkedMessages.delete(uuidStr);
     }
   }
 }
+
+export default NATSTransport;

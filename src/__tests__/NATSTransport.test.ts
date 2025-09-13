@@ -4,7 +4,7 @@ import MessageConnection from "@/MessageConnection";
 import { Anomaly } from "../errors";
 import { NATSTransport } from "../transports/NATSTransport";
 
-const isCCI = process.env.CCI === "1";
+const isCI = process.env.CI === "1";
 
 const wait = (millis = 0): Promise<void> =>
   new Promise((resolve) => {
@@ -19,8 +19,8 @@ describe("NATSTransport", (): void => {
   let monitorTransport: NATSTransport<string, string>;
 
   beforeAll(async (): Promise<void> => {
-    const config: ConnectionOptions = { servers: [`nats://localhost:${isCCI ? 4222 : 4225}`] };
-    const monitorUrl = `http://localhost:${isCCI ? 8222 : 8225}`;
+    const config: ConnectionOptions = { servers: [`nats://localhost:${isCI ? 4222 : 4225}`] };
+    const monitorUrl = `http://localhost:${isCI ? 8222 : 8225}`;
     const signSalt = String(Date.now());
 
     clientConnection = new MessageConnection<string | undefined, string | undefined>(

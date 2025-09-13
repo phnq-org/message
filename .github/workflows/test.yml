@@ -7,7 +7,7 @@ on:
       - master
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
     services:
       nats_server:
@@ -25,5 +25,5 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Lint
+      - name: Test
         run: CI=1 bun test

@@ -207,7 +207,7 @@ class MessageConnection<T, R, A = never> {
         throw new Error("requestOne: no responses were returned");
       }
 
-      return resps[0];
+      return resps[0] as boolean;
     } else {
       return resp as R;
     }

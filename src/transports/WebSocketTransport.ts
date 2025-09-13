@@ -55,7 +55,7 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
   public async close(): Promise<void> {
     return new Promise((resolve) => {
       if (this.socket) {
-        this.socket.addEventListener("close", resolve);
+        this.socket.addEventListener("close", () => resolve());
         this.socket.close(1000);
       } else {
         resolve();
@@ -72,7 +72,7 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
       return;
     } else if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
       return new Promise<void>((resolve) => {
-        this.socket?.addEventListener("open", resolve);
+        this.socket?.addEventListener("open", () => resolve());
       });
     }
     let closeReason: string | undefined;

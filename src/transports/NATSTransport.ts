@@ -132,7 +132,7 @@ export class NATSTransport<T, R> implements MessageTransport<T, R> {
         clients.set(clientPoolKey, [nc, refCount - 1]);
       } else {
         log("Closing NATS connection: ", this.config);
-        this.nc.close();
+        await this.nc.close();
         clients.delete(clientPoolKey);
       }
     }

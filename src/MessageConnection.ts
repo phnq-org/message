@@ -102,7 +102,7 @@ class MessageConnection<T, R, A = never> {
     this.marshalPayload = marshalPayload || ((p) => p);
     this.unmarshalPayload = unmarshalPayload || ((p) => p);
 
-    transport.onReceive((message) => {
+    transport.onReceive(async (message) => {
       let errorMessage: ErrorMessage | undefined;
 
       if (this.signSalt) {
@@ -124,7 +124,7 @@ class MessageConnection<T, R, A = never> {
       const unmarshaledMessage = this.unmarshalMessage(errorMessage || message);
 
       if (unmarshaledMessage.t === MessageType.Request) {
-        this.handleRequest(unmarshaledMessage);
+        await this.handleRequest(unmarshaledMessage);
         return;
       }
 
@@ -354,8 +354,14 @@ class MessageConnection<T, R, A = never> {
 
     const respond = (m: ResponseMessage<R>): void => {
       const signedMessage = this.signMessage(this.marshalMessage(m)) as ResponseMessage<R>;
-      this.transport.send(signedMessage);
-      conversation.responses.push({ message: signedMessage, time: hrtime(start) });
+      this.transport
+        .send(signedMessage)
+        .then(() => {
+          conversation.responses.push({ message: signedMessage, time: hrtime(start) });
+        })
+        .catch((err) => {
+          log.error("Failed to send response message: %s", err);
+        });
     };
 
     if (!this.receiveHandler) {

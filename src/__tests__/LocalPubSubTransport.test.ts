@@ -36,9 +36,9 @@ describe("LocalPubSubTransport", () => {
     );
   });
 
-  afterAll((): void => {
-    clientConnection.transport.close();
-    serverConnection.transport.close();
+  afterAll(async () => {
+    await clientConnection.transport.close();
+    await serverConnection.transport.close();
   });
 
   describe("requests with multiple responses", (): void => {

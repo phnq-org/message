@@ -165,8 +165,8 @@ class MessageConnection<T, R, A = never> {
     return this.connId;
   }
 
-  public get attributes(): Record<keyof A, A[keyof A]> {
-    return Object.fromEntries(this._attributes) as Record<keyof A, A[keyof A]>;
+  public get attributes(): A {
+    return Object.fromEntries(this._attributes) as A;
   }
 
   public getAttribute<K extends keyof A>(key: K): A[K] | undefined {

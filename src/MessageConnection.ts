@@ -89,7 +89,7 @@ class MessageConnection<T, R, A = never> {
   private signSalt?: string;
   private marshalPayload: (payload: T | R) => T | R;
   private unmarshalPayload: (payload: T | R) => T | R;
-  private attributes = new Map<keyof A, A[keyof A]>();
+  private _attributes = new Map<keyof A, A[keyof A]>();
   private receiveHandler?: ReceiveHandler<T, R>;
   public onConversation?: (c: ConversationSummary<T, R>) => void;
 
@@ -165,8 +165,12 @@ class MessageConnection<T, R, A = never> {
     return this.connId;
   }
 
+  public get attributes(): Record<keyof A, A[keyof A]> {
+    return Object.fromEntries(this._attributes) as Record<keyof A, A[keyof A]>;
+  }
+
   public getAttribute<K extends keyof A>(key: K): A[K] | undefined {
-    return this.attributes.get(key) as A[K] | undefined;
+    return this._attributes.get(key) as A[K] | undefined;
   }
 
   /**
@@ -176,11 +180,11 @@ class MessageConnection<T, R, A = never> {
    * @param value the value
    */
   public setAttribute<K extends keyof A>(key: K, value: A[K]): void {
-    this.attributes.set(key, value);
+    this._attributes.set(key, value);
   }
 
   public deleteAttribute<K extends keyof A>(key: K): void {
-    this.attributes.delete(key);
+    this._attributes.delete(key);
   }
 
   public async send(data: T): Promise<void> {

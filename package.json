@@ -1,6 +1,6 @@
 {
   "name": "@phnq/message",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Asynchronous, incremental messaging client and server",
   "keywords": [
     "WebSocket",
@@ -24,7 +24,7 @@
     "posttest": "podman stop nats_phnq_message_test; podman rm nats_phnq_message_test",
     "prelint": "tsc -b",
     "lint": "biome check src",
-    "release": "bun run dist && bun run test && bun publish"
+    "release": "bun run clean && bun run dist && bun run test && bun publish"
   },
   "engines": {
     "node": ">=20"

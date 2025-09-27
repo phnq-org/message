@@ -62,7 +62,7 @@ describe("WebSocketMessage", (): void => {
 
       const wsms = new WebSocketMessageServer<string, string>({
         httpServer,
-        path: "/simultaneous-path",
+        paths: ["/simultaneous-path"],
       });
       wsms.onReceive = async (_, message) => `you said ${message}`;
 

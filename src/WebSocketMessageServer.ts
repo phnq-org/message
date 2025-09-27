@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import type http from "node:http";
 import type https from "node:https";
 import WebSocket from "isomorphic-ws";
@@ -19,6 +20,7 @@ type ReceiveHandler<T, R, A = never> = (
 interface Config {
   httpServer: http.Server | https.Server;
   path?: string;
+  paths?: string[];
 }
 
 class WebSocketMessageServer<T = unknown, R = T, A = never> {
@@ -30,9 +32,13 @@ class WebSocketMessageServer<T = unknown, R = T, A = never> {
   };
   private connectionsById = new Map<ConnectionId, MessageConnection<T, R, A>>();
 
-  public constructor({ httpServer, path = "/" }: Config) {
+  public constructor({ httpServer, path, paths }: Config) {
+    if (path && paths) {
+      throw new Error("Cannot specify both 'path' and 'paths'");
+    }
+
     this.wss = new WebSocket.Server({ server: httpServer });
-    this.start(path);
+    this.start(path ? [path] : (paths ?? ["/"]));
   }
 
   public getConnection(id: ConnectionId): MessageConnection<T, R, A> | undefined {
@@ -57,11 +63,13 @@ class WebSocketMessageServer<T = unknown, R = T, A = never> {
     });
   }
 
-  private start(path: string): void {
+  private start(paths: string[]): void {
     this.wss.on(
       "connection",
       async (socket: WebSocket, req: http.IncomingMessage): Promise<void> => {
-        if (req.url !== path) {
+        assert(req.url, "WebSocket connection request must have a URL");
+
+        if (!paths.includes(req.url)) {
           socket.close(1008, `unsupported path: ${req.url}`);
           return;
         }

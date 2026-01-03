@@ -16,8 +16,21 @@
     "url": "git+https://github.com/pgostovic/message.git"
   },
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "browser": "./dist/browser.js",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "browser": "./dist/browser.js",
+        "default": "./dist/index.js"
+      }
+    }
+  },
   "scripts": {
     "dist": "bun build --production ./src/index.ts --outdir ./dist --target node --packages=external; tsc --project tsconfig.types.json",
+    "postdist": "bun build --production ./src/browser.ts --outdir ./dist --target browser --minify",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "bun test",
     "pretest": "podman run -d --name nats_phnq_message_test -p 4225:4222 -p8225:8222 nats",

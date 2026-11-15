@@ -138,7 +138,7 @@ describe("WebSocketMessage", (): void => {
       });
     });
 
-    it.only("should close the socket if the wrong path is specified", async (): Promise<void> => {
+    it("should close the socket if the wrong path is specified", async (): Promise<void> => {
       const httpServer = http.createServer();
       await new Promise<void>((resolve): void => {
         httpServer.listen({ port: 55556 }, resolve);

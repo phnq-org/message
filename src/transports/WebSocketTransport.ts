@@ -111,6 +111,16 @@ export class ClientWebSocketTransport<T, R> implements MessageTransport<T, R> {
     });
 
     /**
+     * A server may reject the connection by closing the socket immediately after
+     * the handshake (e.g. unsupported path). Depending on the runtime, the `close`
+     * event can arrive just after `open`, so give it a chance to be delivered
+     * before deciding that the connection is usable.
+     */
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    }
+
+    /**
      * If there's a connection error then the `close` event may or may not have
      * already been emitted at this point. If not, then the socket will still exist
      * but will be in the `CLOSING` state, in which case we need to wait for the

@@ -21,7 +21,15 @@ interface Config {
   httpServer: http.Server | https.Server;
   path?: string;
   paths?: string[];
+  /**
+   * How often (ms) to ping each client to check it is still reachable. A client that
+   * has not answered the previous ping by the next interval is terminated, which
+   * triggers `onDisconnect`. Set to 0 to disable. Defaults to 30000.
+   */
+  pingIntervalMs?: number;
 }
+
+const DEFAULT_PING_INTERVAL_MS = 30000;
 
 class WebSocketMessageServer<T = unknown, R = T, A = never> {
   private wss: WebSocket.Server;
@@ -32,11 +40,14 @@ class WebSocketMessageServer<T = unknown, R = T, A = never> {
   };
   private connectionsById = new Map<ConnectionId, MessageConnection<T, R, A>>();
 
-  public constructor({ httpServer, path, paths }: Config) {
+  private readonly pingIntervalMs: number;
+
+  public constructor({ httpServer, path, paths, pingIntervalMs }: Config) {
     if (path && paths) {
       throw new Error("Cannot specify both 'path' and 'paths'");
     }
 
+    this.pingIntervalMs = pingIntervalMs ?? DEFAULT_PING_INTERVAL_MS;
     this.wss = new WebSocket.Server({ server: httpServer });
     this.start(path ? [path] : (paths ?? ["/"]));
   }
@@ -83,7 +94,10 @@ class WebSocketMessageServer<T = unknown, R = T, A = never> {
         connection.onReceive = (message: T): Promise<R | AsyncIterableIterator<R>> =>
           this.onReceive(connection, message);
 
+        const stopLiveness = this.startLivenessCheck(socket);
+
         socket.addListener("close", async () => {
+          stopLiveness();
           this.connectionsById.delete(connection.id);
           await this.onDisconnect(connection);
         });
@@ -91,6 +105,39 @@ class WebSocketMessageServer<T = unknown, R = T, A = never> {
         await this.onConnect(connection, req);
       },
     );
+  }
+
+  /**
+   * Detects clients that vanished without closing the connection (e.g. a phone losing
+   * signal). Pings the client periodically; if no pong arrived since the previous ping,
+   * the socket is terminated, which emits `close` and so triggers `onDisconnect`.
+   * Returns a function that stops the check.
+   */
+  private startLivenessCheck(socket: WebSocket): () => void {
+    if (this.pingIntervalMs <= 0) {
+      return () => undefined;
+    }
+
+    let isAlive = true;
+    socket.addListener("pong", () => {
+      isAlive = true;
+    });
+
+    const timer = setInterval(() => {
+      if (!isAlive) {
+        socket.terminate();
+        return;
+      }
+      isAlive = false;
+      try {
+        socket.ping();
+      } catch {
+        socket.terminate();
+      }
+    }, this.pingIntervalMs);
+    timer.unref?.();
+
+    return () => clearInterval(timer);
   }
 }
 

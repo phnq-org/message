@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import http from "node:http";
+import WebSocket from "ws";
 import MessageConnection from "../MessageConnection";
 import WebSocketMessageClient from "../WebSocketMessageClient";
 import WebSocketMessageServer from "../WebSocketMessageServer";
@@ -10,6 +11,41 @@ import WebSocketMessageServer from "../WebSocketMessageServer";
 //   });
 
 describe("WebSocketMessage", (): void => {
+  describe("liveness check", (): void => {
+    const run = async (autoPong: boolean): Promise<boolean> => {
+      const httpServer = http.createServer();
+      await new Promise<void>((resolve) => httpServer.listen({ port: 55557 }, resolve));
+
+      const wsms = new WebSocketMessageServer({ httpServer, pingIntervalMs: 50 });
+      let disconnected = false;
+      wsms.onDisconnect = async () => {
+        disconnected = true;
+      };
+
+      const client = new WebSocket("ws://localhost:55557", { autoPong });
+      await new Promise<void>((resolve) => client.on("open", () => resolve()));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const result = disconnected;
+
+      client.terminate();
+      await wsms.close();
+      await new Promise((resolve) => {
+        httpServer.closeAllConnections();
+        httpServer.close(resolve);
+      });
+      return result;
+    };
+
+    it("should disconnect a client that stops answering pings", async () => {
+      expect(await run(false)).toBe(true);
+    });
+
+    it("should keep a client that answers pings", async () => {
+      expect(await run(true)).toBe(false);
+    });
+  });
+
   describe("with WebSocketTransport", (): void => {
     it("should handle multiple responses with an iterator", async (): Promise<void> => {
       const httpServer = http.createServer();
